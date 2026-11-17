@@ -31,6 +31,20 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release")
+                cppFlags += listOf("-O3")
+            }
+        }
+    }
+
+    // Couche native : whisper.cpp + andika_whisper (voir src/main/cpp/CMakeLists.txt).
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {

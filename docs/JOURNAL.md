@@ -18,4 +18,5 @@ Dernière mise à jour : voir l'historique Git. Ce fichier dit, lot par lot, ce 
 
 | Lot | État | Détail |
 | --- | --- | --- |
-| L0 | En cours | |
+| L0 | Fait | Squelette Flutter sans dépendance externe, configuration Gradle/Android écrite à la main, CI GitHub, décisions (`DECISIONS.md`), jeu d'essai, outil de mesure `tools/wer.py` (testé). **Non vérifié :** la configuration Gradle n'a pas été exécutée. |
+| L1 | Fait (partie native vérifiée) | whisper.cpp 1.9.5 en sous-module, couche C `andika_whisper`, liaison Dart FFI. **Vérifié :** compilation Linux et 28 contrôles passent (SHA-1 sur les vecteurs officiels, détection d'en-tête de modèle, annulation, paramètres invalides, chargement du petit modèle factice). **Non vérifié :** compilation Android (NDK), liaison Dart, vraie transcription, mesures de vitesse et de mémoire (L1.2 à L1.5 : il faut un téléphone et les modèles). |
