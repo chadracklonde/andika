@@ -1,0 +1,21 @@
+name: andika
+description: Andika — transcription audio hors ligne sur Android avec Whisper.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+# Choix volontaire : aucune dépendance externe (hors Flutter). Les fonctions
+# Android (sélecteur de fichiers, décodage audio, service, partage) passent par
+# du code Kotlin maison, et le moteur Whisper par dart:ffi. Voir docs/DECISIONS.md.
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

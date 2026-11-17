@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  natif:
+    name: Tests de la couche native (hôte)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Compiler et tester
+        run: |
+          cmake -S native_tests -B build-native -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-native -j 2
+          ctest --test-dir build-native --output-on-failure
+      - name: Tests Python
+        run: python3 tools/test_wer.py
+
+  flutter:
+    name: Analyse, tests et APK de débogage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug --target-platform android-arm64
