@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
+import '../app/strings.dart';
+import '../transcription/eta.dart';
 import 'common.dart';
 import 'result_screen.dart';
 
@@ -13,6 +15,12 @@ class ProgressScreen extends StatefulWidget {
 
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
+}
+
+String _etaText(Strings s, Duration eta) {
+  final parts = splitEta(eta);
+  if (parts.hours > 0) return '${parts.hours} h ${parts.minutes.toString().padLeft(2, '0')}';
+  return '${parts.minutes < 1 ? 1 : parts.minutes} min';
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
@@ -109,6 +117,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 if (failed && task.errorDetail != null) ...<Widget>[
                   const SizedBox(height: 8),
                   Text(task.errorDetail!, textAlign: TextAlign.center),
+                ],
+                if (!failed && task.eta != null) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(s.t('eta', {'t': _etaText(s, task.eta!)}), textAlign: TextAlign.center),
                 ],
                 const SizedBox(height: 8),
                 if (!failed) Text(s.t('keep_running_hint'), textAlign: TextAlign.center),

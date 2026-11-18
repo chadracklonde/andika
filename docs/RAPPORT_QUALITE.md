@@ -40,7 +40,7 @@
 
 | Risque | Réponse prévue | Réponse en place | Écart |
 | --- | --- | --- | --- |
-| Lenteur sur milieu de gamme | Modèle base quantifié par défaut ; découpage ; estimation du temps | Découpage aux silences, option d'ignorer les silences, modèle **base non quantifié** par défaut | Le défaut n'est pas quantifié (la somme de contrôle de la variante q5_1 n'est pas publiée) ; **pas d'estimation du temps** restant. À faire après mesures. |
+| Lenteur sur milieu de gamme | Modèle base quantifié par défaut ; découpage ; estimation du temps | Découpage aux silences, option d'ignorer les silences, estimation du temps restant, modèle **base non quantifié** par défaut | Le défaut n'est pas quantifié (la somme de contrôle de la variante q5_1 n'est pas publiée) ; estimation du temps restant ajoutée (rythme observé, après 2 morceaux). Défaut non quantifié à revoir après mesures. |
 | Mémoire / plantage | Détection de la RAM, blocage des modèles trop lourds, morceaux | Fait (seuils de RAM = valeurs de départ, **à mesurer**) | Seuils non calibrés |
 | Arrêt en arrière-plan | Service d'avant-plan, reprise | Service dataSync + notification + journal reprenable ; reprise à la demande (bouton) | Pas de reprise automatique ; certains constructeurs tuent quand même l'application |
 | Qualité swahili/kingwana | Annoncer la limite ; modèles ajustés ; correction facile ; dictionnaire | Avertissement, correction par segment, dictionnaire | Modèles ajustés non testés (piste L12) |
@@ -56,7 +56,7 @@
 4. Variantes `q5_1` : vérifiées seulement par en-tête et taille, sans SHA-1.
 5. Seuils de RAM, nombre de fils (moitié des cœurs, entre 2 et 4) : valeurs de départ.
 6. Découpage en morceaux de 10 à 28 s : une phrase coupée entre deux morceaux peut être mal transcrite.
-7. Whisper peut inventer du texte sur du bruit ou du silence (« hallucinations ») : aucun filtre dans la V1.
+7. Whisper peut inventer du texte sur du bruit ou du silence (« hallucinations ») : seul un filtre de répétitions (3 segments identiques de suite ou plus) est appliqué ; les phrases inventées non répétées passent.
 8. Un seul travail à la fois ; pas de file d'attente.
 
 ## 6. Ordre conseillé au premier jour sur machine avec SDK

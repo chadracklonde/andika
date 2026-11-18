@@ -12,6 +12,8 @@ import '../models/model_store.dart';
 import '../platform/platform_bridge.dart';
 import '../storage/job.dart';
 import '../storage/job_store.dart';
+import '../transcription/cleanup.dart';
+import '../transcription/eta.dart';
 import '../transcription/foreground_guard.dart';
 import '../transcription/transcript.dart';
 import '../transcription/transcription_runner.dart';
@@ -29,6 +31,9 @@ class ActiveTask {
   String stage = 'importing';
   int importPercent = 0;
   RunProgress? progress;
+
+  /// Temps restant estimé, null tant que l'estimation n'est pas fiable.
+  Duration? eta;
   String? errorKey;
   String? errorDetail;
 }
@@ -269,10 +274,14 @@ class AppController extends ChangeNotifier {
       ),
     );
     RunProgress? last;
+    final estimator = EtaEstimator();
     try {
       await for (final p in stream) {
         last = p;
         task.progress = p;
+        if (p.phase == RunPhase.transcribing && p.totalChunks > 0) {
+          task.eta = estimator.update(p.doneChunks, p.totalChunks);
+        }
         notifyListeners();
       }
     } finally {
@@ -285,7 +294,7 @@ class AppController extends ChangeNotifier {
     final log = jobs.log(job.id);
     final detected = log.dominantLanguage();
     if (last != null && last.phase == RunPhase.done) {
-      final segments = applyReplacementsToSegments(log.allSegments(), replacements);
+      final segments = applyReplacementsToSegments(collapseRepeats(log.allSegments()), replacements);
       jobs.saveTranscript(job.id, segments);
       jobs.save(job.copyWith(status: JobStatus.done, detectedLanguage: detected));
       active = null;
@@ -348,6 +357,6 @@ class AppController extends ChangeNotifier {
   /// Applique le dictionnaire au texte déjà transcrit d'une transcription.
   void reapplyReplacements(String id) {
     final raw = jobs.log(id).allSegments();
-    jobs.saveTranscript(id, applyReplacementsToSegments(raw, replacements));
+    jobs.saveTranscript(id, applyReplacementsToSegments(collapseRepeats(raw), replacements));
   }
 }
