@@ -34,6 +34,7 @@ class PlatformBridge(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPick: MethodChannel.Result? = null
     private var pendingNotif: MethodChannel.Result? = null
+    private val audioPlayer = AudioPlayer { state -> emit("playerState", state) }
     private var decoder: AudioDecoder? = null
     private var shareConsumed = false
 
@@ -123,6 +124,25 @@ class PlatformBridge(
             }
             "notificationsAllowed" -> result.success(notificationsAllowed())
             "requestNotifications" -> requestNotifications(result)
+            "playerLoad" -> {
+                try {
+                    val path = call.argument<String>("path") ?: throw IllegalArgumentException("path")
+                    result.success(audioPlayer.load(path))
+                } catch (e: Exception) {
+                    result.error("player", e.message ?: "Lecture impossible", null)
+                }
+            }
+            "playerPlay" -> { audioPlayer.play(); result.success(null) }
+            "playerPause" -> { audioPlayer.pause(); result.success(null) }
+            "playerSeek" -> {
+                audioPlayer.seek(call.argument<Int>("positionMs") ?: 0)
+                result.success(null)
+            }
+            "playerSpeed" -> {
+                audioPlayer.setSpeed((call.argument<Double>("speed") ?: 1.0).toFloat())
+                result.success(null)
+            }
+            "playerRelease" -> { audioPlayer.release(); result.success(null) }
             "getBatteryInfo" -> result.success(batteryInfo())
             "cancelDecode" -> {
                 decoder?.cancelled = true
