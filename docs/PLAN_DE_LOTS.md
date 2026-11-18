@@ -20,7 +20,9 @@ Chaque lot est livrable et testable seul. Les durées sont indicatives, certains
 | L9 | Interface, accessibilité et langues | L6 (en continu) | 1,5 à 2 semaines |
 | L10 | Tests et qualité | L4 à L9 (en continu) | 2 semaines en fin de projet |
 | L11 | Légal et publication | L10 | 1 à 2 semaines |
-| L12 | Après la V1 | L11 | hors V1 |
+| L12 | Enregistreur et bibliothèque d'enregistrements | L4, L6 | 1,5 à 2 semaines |
+| L13 | Export élargi (DOCX, Enregistrer sous…, audio) | L7, L12 | 1 semaine |
+| L14 | Après la V1 | L11 | hors V1 |
 
 ## L0 — Préparation et décisions
 
@@ -194,12 +196,36 @@ Chaque lot est livrable et testable seul. Les durées sont indicatives, certains
 **Livrable :** version 1.0 publiée ou diffusée.
 **Fin du lot :** bêta sans plantage bloquant, fiche acceptée.
 
-## L12 — Après la V1
+## L12 — Enregistreur et bibliothèque d'enregistrements
+
+**Objectif :** enregistrer depuis l'application, conserver les enregistrements, les transcrire et récupérer l'audio (F15 à F18).
+
+- L12.1 Enregistreur Kotlin (AudioRecord 16 kHz mono PCM 16 bits, écriture WAV directe), pause/reprise, niveau sonore.
+- L12.2 Service au premier plan de type micro ; autorisations RECORD_AUDIO (à l'exécution) et FOREGROUND_SERVICE_MICROPHONE.
+- L12.3 Stockage des enregistrements et réparation d'en-tête WAV après interruption.
+- L12.4 Écrans Enregistreur et Enregistrements (lecture, renommage, suppression, espace occupé).
+- L12.5 Transcrire depuis la bibliothèque (réutilise le flux L4 sans décodage).
+- L12.6 Textes FR/EN, accessibilité, tests.
+
+**Fin du lot :** un enregistrement écran éteint apparaît dans la bibliothèque, se transcrit et se récupère.
+
+## L13 — Export élargi
+
+**Objectif :** exporter le texte et l'audio où l'utilisateur le souhaite (F14, F19, F20, F18).
+
+- L13.1 Générateur DOCX en Dart pur (archive ZIP sans compression, CRC32), tests de structure.
+- L13.2 « Enregistrer sous… » (sélecteur de documents Android) pour TXT, SRT, DOCX et WAV.
+- L13.3 Menu d'export du résultat et de la bibliothèque mis à jour.
+- L13.4 Textes FR/EN, tests.
+
+**Fin du lot :** le DOCX s'ouvre dans Word ou LibreOffice ; les fichiers enregistrés sous… sont lisibles.
+
+## L14 — Après la V1
 
 Hors périmètre de la V1, à planifier ensuite :
 
-- Export DOCX (F14) et enregistrement dans l'application (F15), si non retenus en L0.6.
 - Transcription en direct, identification des locuteurs, traduction, synchronisation cloud, versions iOS, Windows et Web (section 2).
+- Enregistrement compressé (AAC/M4A).
 - Modèle medium, modèles ajustés pour le swahili (sections 7 et 10).
 
 ## Matrice de traçabilité
@@ -221,8 +247,13 @@ Chaque exigence du cahier des charges est rattachée à au moins un lot.
 | F11 Recherche | L7 |
 | F12 Remplacement de mots | L8 |
 | F13 Suppression des silences | L8 |
-| F14 Export DOCX | L12 (ou V1 selon L0.6) |
-| F15 Enregistrement | L12 (ou V1 selon L0.6) |
+| F14 Export DOCX | L13 |
+| F15 Enregistrement | L12 |
+| F16 Bibliothèque d'enregistrements | L12 |
+| F17 Transcrire un enregistrement | L12 |
+| F18 Récupérer l'audio | L12, L13 |
+| F19 Enregistrer sous… | L13 |
+| F20 Export de l'audio d'une transcription | L13 |
 | Hors ligne | L3, L4 |
 | Confidentialité | L4, L11 |
 | Compatibilité | L1, L10 |
@@ -234,7 +265,7 @@ Chaque exigence du cahier des charges est rattachée à au moins un lot.
 | Accessibilité | L9 |
 | Section 10 — Langues et qualité | L1, L8, L9 |
 | Section 11 — Licences et aspects juridiques | L9, L11 |
-| Critères d'acceptation C1 à C6 | L10 |
+| Critères d'acceptation C1 à C6 et critères enregistreur | L10, L12, L13 |
 | Risques R1 à R7 | L0 (R5), L1 (R1, R4, R5), L3 (R2, R7), L4 (R1, R2), L5 (R3, R6), L8 et L9 (R4), L10 (tous) |
 | Questions ouvertes Q1 à Q5 | L0 |
 

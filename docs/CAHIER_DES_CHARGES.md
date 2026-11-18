@@ -25,12 +25,13 @@ Les journalistes, chercheurs et communicateurs ont besoin de transformer rapidem
 - Choix de la langue (français par défaut, détection automatique possible).
 - Choix du modèle (taille) et téléchargement des modèles à la demande.
 - Affichage, édition et recherche dans le texte.
-- Export TXT et SRT, partage.
+- Export TXT, SRT et DOCX, partage, et « Enregistrer sous… » dans le dossier de son choix.
 - Historique local des transcriptions.
+- Enregistreur numérique (dictaphone) intégré, avec une bibliothèque d'enregistrements : écouter, renommer, transcrire, récupérer l'audio, supprimer.
 
 **Hors V1 (versions suivantes) :**
 
-- Transcription en direct pendant l'enregistrement.
+- Transcription en direct pendant l'enregistrement (la V1 transcrit après l'enregistrement).
 - Identification des locuteurs.
 - Traduction du texte transcrit.
 - Synchronisation dans le cloud et comptes utilisateurs.
@@ -60,8 +61,13 @@ Les journalistes, chercheurs et communicateurs ont besoin de transformer rapidem
 | F11 | Recherche | Recherche dans une transcription et dans l'historique | Moyenne |
 | F12 | Remplacement de mots | Dictionnaire personnel de corrections automatiques appliquées après la transcription (noms propres, sigles) | Moyenne |
 | F13 | Suppression des silences | Option de retirer les silences avant la transcription pour gagner du temps | Moyenne |
-| F14 | Export DOCX | Export du texte dans un document Word | Basse |
-| F15 | Enregistrement | Enregistrer directement depuis l'application, puis transcrire le fichier obtenu | Basse |
+| F14 | Export DOCX | Export du texte dans un document Word (titre, segments, horodatages facultatifs) | Moyenne |
+| F15 | Enregistrement | Enregistrer directement depuis l'application (micro), en pause/reprise, avec indicateur de niveau, y compris écran éteint | Haute |
+| F16 | Bibliothèque d'enregistrements | Liste des enregistrements stockés dans l'application (nom, date, durée, taille) ; écoute ; renommage ; suppression ; réparation d'un enregistrement interrompu | Haute |
+| F17 | Transcrire un enregistrement | Lancer la transcription d'un enregistrement depuis la bibliothèque, avec les mêmes choix de langue et de modèle que pour un fichier importé | Haute |
+| F18 | Récupérer l'audio | Partager un enregistrement ou le copier (« Enregistrer sous… ») vers un dossier choisi par l'utilisateur, au format WAV | Haute |
+| F19 | Enregistrer sous… | Exporter la transcription (TXT, SRT, DOCX) vers un dossier choisi, en plus du partage | Moyenne |
+| F20 | Export de l'audio d'une transcription | Depuis le résultat, partager ou enregistrer l'audio converti associé | Basse |
 
 ## 5. Exigences non fonctionnelles
 
@@ -70,7 +76,8 @@ Les journalistes, chercheurs et communicateurs ont besoin de transformer rapidem
 - **Compatibilité :** Android 8.0 (API 26) ou plus récent, architecture ARM 64 bits (arm64-v8a) obligatoire. Version minimale à confirmer après les tests.
 - **Performance :** l'interface reste fluide pendant la transcription. L'objectif de vitesse (par exemple, durée de traitement par rapport à la durée de l'audio) sera mesuré sur les appareils de test, puis fixé.
 - **Stabilité :** pas de plantage par manque de mémoire. Le modèle proposé par défaut doit tenir dans la mémoire des appareils de 4 Go de RAM. Les modèles trop lourds sont déconseillés ou bloqués selon la RAM détectée.
-- **Stockage :** les modèles sont téléchargés à part, pas inclus dans l'APK. L'application affiche l'espace utilisé et permet de supprimer chaque modèle.
+- **Stockage :** les modèles sont téléchargés à part, pas inclus dans l'APK. L'application affiche l'espace utilisé et permet de supprimer chaque modèle. Les enregistrements sont stockés dans l'espace privé de l'application au format WAV 16 kHz mono (environ 115 Mo par heure) ; la bibliothèque affiche l'espace occupé et prévient quand l'espace libre devient faible.
+- **Enregistrement :** l'autorisation du micro n'est demandée qu'au premier enregistrement. L'enregistrement continue écran éteint grâce à un service au premier plan de type micro avec notification visible. Un enregistrement interrompu (plantage, batterie vide) reste récupérable. Aucun enregistrement ne quitte l'appareil sans action de l'utilisateur.
 - **Batterie :** avertir l'utilisateur que les longues transcriptions consomment de la batterie ; proposer de la lancer pendant la charge.
 - **Langue de l'interface :** français d'abord, anglais ensuite.
 - **Accessibilité :** textes redimensionnables, contrastes suffisants, compatibilité avec TalkBack.
@@ -83,6 +90,8 @@ Les journalistes, chercheurs et communicateurs ont besoin de transformer rapidem
 - **Moteur de transcription :** whisper.cpp (licence MIT), compilé pour Android avec le NDK et appelé depuis Dart par FFI. Une alternative plus rapide à mettre en place est un paquet Flutter existant qui enveloppe whisper.cpp (à évaluer : maintenance, compatibilité, performances).
 - **Décodage audio :** MediaExtractor et MediaCodec côté Android (Kotlin, via un canal de plateforme) pour produire du PCM 16 kHz mono sans dépendance lourde. FFmpeg en solution de secours, à condition que le paquet utilisé soit encore maintenu.
 - **Traitement en arrière-plan :** Isolate Dart pour ne pas bloquer l'interface, et service Android au premier plan avec notification pour que le système ne tue pas le traitement. Le type de service est à choisir selon les règles Android en vigueur.
+- **Enregistrement :** AudioRecord (Kotlin) à 16 kHz mono PCM 16 bits, écrit directement en WAV ; service au premier plan de type micro. Les enregistrements sont ensuite transcrits sans conversion.
+- **Export :** TXT, SRT, DOCX (généré en Dart pur, sans dépendance) ; « Enregistrer sous… » via le sélecteur de documents d'Android (ACTION_CREATE_DOCUMENT), qui n'exige aucune autorisation de stockage.
 - **Stockage local :** SQLite (par exemple avec la bibliothèque drift) pour l'historique, les segments et le dictionnaire de remplacements ; fichiers pour l'audio et les modèles.
 - **Téléchargement des modèles :** depuis un hébergement public (Hugging Face pour les modèles au format ggml de whisper.cpp), avec vérification d'intégrité par somme de contrôle.
 
@@ -111,6 +120,8 @@ Les versions quantifiées (par exemple q5 ou q8) réduisent la taille et la mém
 6. Le résultat s'affiche et reste modifiable ; l'historique est mis à jour.
 7. L'utilisateur exporte ou partage le texte.
 
+**Variante enregistreur :** l'utilisateur ouvre l'enregistreur, enregistre (pause/reprise possibles), arrête ; le fichier WAV est ajouté à la bibliothèque. Depuis la bibliothèque, il peut écouter, renommer, récupérer l'audio, supprimer, ou lancer la transcription : le flux continue alors à l'étape 2 ci-dessus, sans décodage.
+
 Si l'application est interrompue (appel, redémarrage), la transcription doit pouvoir reprendre à partir des segments déjà enregistrés.
 
 ## 9. Écrans principaux
@@ -118,7 +129,9 @@ Si l'application est interrompue (appel, redémarrage), la transcription doit po
 - **Accueil / Historique :** liste des transcriptions, bouton « Nouvelle transcription », recherche.
 - **Nouvelle transcription :** choix du fichier, de la langue et du modèle, bouton de lancement.
 - **Progression :** pourcentage, durée écoulée, bouton d'annulation.
-- **Résultat :** texte par segments, lecteur audio, édition, recherche, export.
+- **Résultat :** texte par segments, lecteur audio, édition, recherche, export (copier, partager, enregistrer sous… en TXT, SRT, DOCX ; audio).
+- **Enregistreur :** bouton d'enregistrement, chronomètre, niveau sonore, pause/reprise, arrêt.
+- **Enregistrements :** bibliothèque avec lecture, renommage, transcription, récupération de l'audio, suppression, espace occupé.
 - **Modèles :** liste des modèles, téléchargement, suppression, espace utilisé.
 - **Dictionnaire :** liste des remplacements automatiques (par exemple « lomami » remplacé par « Lomami »).
 - **Réglages :** langue de l'interface, langue de transcription par défaut, options d'export, à propos et licences.
@@ -158,7 +171,9 @@ Les durées sont des estimations à ajuster selon la disponibilité et les résu
 
 - Un fichier de 60 minutes est transcrit en entier sans plantage sur au moins deux appareils de test, dont un milieu de gamme.
 - La transcription continue écran éteint et reprend après une interruption.
-- Le texte exporté en TXT et en SRT s'ouvre correctement dans un éditeur de texte et dans un lecteur vidéo.
+- Le texte exporté en TXT et en SRT s'ouvre correctement dans un éditeur de texte et dans un lecteur vidéo ; le DOCX s'ouvre dans Word ou LibreOffice.
+- Un enregistrement de 60 minutes écran éteint est complet, apparaît dans la bibliothèque, peut être transcrit et son audio récupéré hors de l'application.
+- Un enregistrement interrompu brutalement est récupérable et lisible.
 - Aucun accès réseau n'a lieu pendant la transcription (vérifié en mode avion).
 - L'application reste utilisable (navigation fluide) pendant la transcription.
 - Le taux d'erreurs sur le jeu d'essai en français est mesuré et jugé acceptable par l'équipe de test (seuil à fixer après les premiers essais).
@@ -173,7 +188,9 @@ Les durées sont des estimations à ajuster selon la disponibilité et les résu
 | Mauvaise qualité en swahili et kingwana | Annoncer la limite ; tester des modèles ajustés ; permettre une correction facile et un dictionnaire |
 | Paquet Flutter non maintenu | Isoler le moteur derrière une interface ; prévoir l'intégration FFI directe |
 | Chauffe et consommation de batterie | Avertissement, conseil de brancher le téléphone, option de pause |
-| Espace de stockage insuffisant | Afficher la taille avant téléchargement, permettre la suppression des modèles |
+| Espace de stockage insuffisant | Afficher la taille avant téléchargement, permettre la suppression des modèles ; avertir avant et pendant l'enregistrement quand l'espace libre est faible |
+| Enregistrement coupé par le système ou perte de données | Service au premier plan de type micro ; en-tête WAV réparable ; conseil de désactiver l'optimisation de batterie |
+| Autorisation du micro refusée | Message clair, lien vers les réglages, l'import de fichiers reste disponible |
 
 ## 15. Questions ouvertes
 
@@ -181,4 +198,5 @@ Les durées sont des estimations à ajuster selon la disponibilité et les résu
 - Quels téléphones Android serviront aux tests (RAM, version d'Android) ?
 - Quelle part de l'usage visé concerne le swahili et le lingala par rapport au français ?
 - L'application sera-t-elle publiée sur Google Play, ou seulement distribuée en APK ?
-- Faut-il prévoir dès la V1 un export vers Word (DOCX) pour les journalistes ?
+- Décidé : l'export DOCX et l'enregistreur intégré entrent dans la V1 (demande du 18 novembre 2026).
+- Faut-il proposer plus tard un format compressé (AAC/M4A) pour les enregistrements longs, afin de réduire l'espace occupé ?
