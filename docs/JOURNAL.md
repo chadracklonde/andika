@@ -2,6 +2,21 @@
 
 Dernière mise à jour : voir l'historique Git. Ce fichier dit, lot par lot, ce qui est fait, **ce qui a été vérifié** et **ce qui ne l'a pas été**.
 
+## Résumé à lire en premier
+
+Les lots **L0 à L11 sont écrits et poussés** sur `main`. **Rien n'a été compilé ni lancé** :
+ni Flutter, ni Kotlin, ni Gradle, ni sur téléphone. Seule la couche native C++ (whisper.cpp)
+a été compilée et testée (28 contrôles sur 28) avec un modèle factice. Il n'y a donc **aucune
+preuve que l'application démarre**, et des erreurs de compilation sont probables.
+
+Ce qui a été contrôlé par des outils : syntaxe de 53 fichiers Dart/Kotlin, cohérence entre
+fichiers (`tools/check_consistency.py`), parité des textes FR/EN, tests natifs, calcul du taux
+d'erreurs. Détail et écarts : `docs/RAPPORT_QUALITE.md`.
+
+Ce qui reste à faire, dans l'ordre : `flutter pub get && flutter analyze` (corriger), `flutter
+test`, `flutter build apk --debug`, essai sur téléphone avec le modèle `tiny` puis `base`,
+mesures (`MESURES.md`), puis `docs/PUBLICATION.md`.
+
 ## Ce que l'environnement de développement autonome permettait
 
 | Outil | Disponible | Conséquence |
@@ -29,3 +44,5 @@ Dernière mise à jour : voir l'historique Git. Ce fichier dit, lot par lot, ce 
 | L8 | Fait (non compilé) | Dart : dictionnaire de remplacement (mots entiers, casse optionnelle, accents, caractères spéciaux échappés, temps des segments conservés, stockage JSON atomique, fichier abîmé ignoré). L'option « ignorer les silences » est déjà branchée dans le worker (L4) ; les conseils d'enregistrement sont des textes de l'interface (L9). Tests Dart écrits. **Vérifié :** syntaxe. **Non vérifié :** compilation, exécution des tests, comportement des bornes de mots sur le swahili/lingala (apostrophes, traits d'union). |
 | L9 | Fait (non compilé, jamais affiché) | Dart : `AppController` (réglages, historique, modèles, import puis transcription, reprise, arrêt), écrans accueil/historique, nouvelle transcription (langue, modèle, avertissements de mémoire, de batterie et de langues peu couvertes, conseils d'enregistrement), progression, résultat (lecture synchronisée, surlignage, recherche, correction par segment, copie, export TXT/SRT, renommer, supprimer l'audio ou la transcription, reprise), modèles, réglages, dictionnaire, à propos (confidentialité, crédits, licences). Interface FR/EN sans dépendance (127 clés). **Vérifié :** syntaxe ; parité des clés FR/EN, des paramètres et couverture des clés utilisées contrôlées par script (et par `test/strings_test.dart`) ; recoupement des méthodes du contrôleur appelées par l'interface. **Non vérifié :** compilation (aucune analyse de types : des erreurs de type ou d'API Flutter sont probables et seront les premières à corriger au premier `flutter analyze`), rendu, TalkBack, taille de texte agrandie, rotation. `deprecated_member_use` est ignoré dans `analysis_options.yaml` (paramètre `value` des listes déroulantes, variable selon la version de Flutter). « Appliquer le dictionnaire » refait le texte à partir du journal brut et efface les corrections manuelles (le message le dit). |
 | L10 | Fait pour ce qui est faisable ici ; **critères C1 à C6 non validés** | `tools/check_consistency.py` (imports, canal Dart↔Kotlin dans les deux sens, manifeste, clés FR/EN) ajouté au CI ; tests natifs (28/28) et WER rejoués ; `docs/RAPPORT_QUALITE.md` : ce qui a été exécuté, ce qui ne l'a pas été, état de C1–C6, réponse réelle à R1–R7 avec écarts (pas d'estimation du temps, pas de bouton pause, défaut non quantifié), défauts connus et ordre conseillé pour le premier jour avec SDK. **Non fait :** tout test sur appareil. |
+| L11 | Fait pour les documents ; **publication non faite** | `THIRD_PARTY_NOTICES.md` (whisper.cpp MIT, modèles Whisper MIT téléchargés par l'utilisateur, Flutter BSD, AndroidX Apache), `docs/POLITIQUE_DE_CONFIDENTIALITE.md` (projet à relire, contact à renseigner), `docs/FICHE_PLAY_STORE.md` (titre, descriptions, sécurité des données, justification des autorisations), `docs/PUBLICATION.md` (reste à faire par une personne). **Constat sur le nom :** un jeu Android « Andika » existe déjà (itch.io, Google Play `com.OGD.Andika`) : catégorie différente, risque à examiner, pas un avis juridique. **Non fait :** disponibilité du nom sur Play/GitHub/domaine/marques, clé de signature, licence du dépôt (ta décision), bêta fermée, publication, captures d'écran. |
+| L12 | Non commencé (hors V1) | Export DOCX, enregistrement dans l'application, transcription en direct, locuteurs, traduction, modèles ajustés pour le swahili, autres plateformes (voir `PLAN_DE_LOTS.md`). Ajouts identifiés pendant le développement : estimation du temps restant, bouton pause, filtre contre les « hallucinations » sur silence, file d'attente, modèle base quantifié par défaut une fois sa somme de contrôle connue. |
