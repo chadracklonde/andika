@@ -132,7 +132,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     },
                     child: Text(s.t('close')),
                   )
-                else
+                else ...<Widget>[
+                  FilledButton.tonalIcon(
+                    // Mettre en pause = arrêter en gardant tout : « Reprendre » est proposé sur le résultat.
+                    onPressed: c.cancelTranscription,
+                    icon: const Icon(Icons.pause),
+                    label: Text(s.t('pause_transcription')),
+                  ),
+                  const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: () async {
                       final ok = await confirm(context, c,
@@ -144,6 +151,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     icon: const Icon(Icons.stop),
                     label: Text(s.t('stop')),
                   ),
+                ],
               ],
             ),
           ),

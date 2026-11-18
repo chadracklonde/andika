@@ -135,7 +135,38 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ));
     }
-    if (c.history.isEmpty && task == null && !c.recorder.active) {
+    if (c.queue.isNotEmpty) {
+      children.add(Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.queue),
+              title: Text(s.t('queue_banner', {'n': '${c.queue.length}'})),
+              subtitle: Text(c.queueHeld ? s.t('queue_held') : s.t('queue_waiting')),
+            ),
+            for (final item in c.queue)
+              ListTile(
+                dense: true,
+                title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(
+                  tooltip: s.t('queue_remove'),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => c.removeFromQueue(item),
+                ),
+              ),
+            OverflowBar(
+              children: <Widget>[
+                if (c.queueHeld && !c.busy)
+                  TextButton(onPressed: c.resumeQueue, child: Text(s.t('queue_start'))),
+                TextButton(onPressed: c.clearQueue, child: Text(s.t('queue_clear'))),
+              ],
+            ),
+          ],
+        ),
+      ));
+    }
+    if (c.history.isEmpty && task == null && !c.recorder.active && c.queue.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),

@@ -23,6 +23,25 @@ import '../transcription/transcription_runner.dart';
 import 'settings.dart';
 import 'strings.dart';
 
+/// Transcription en attente de son tour.
+class QueuedItem {
+  QueuedItem({
+    required this.title,
+    required this.language,
+    required this.modelId,
+    this.file,
+    this.recording,
+  });
+
+  final String title;
+  final String language;
+  final String modelId;
+
+  /// Fichier à importer, ou [recording] pour un enregistrement du dictaphone.
+  final PickedFile? file;
+  final Recording? recording;
+}
+
 /// Transcription en cours, telle que l'interface l'affiche.
 class ActiveTask {
   ActiveTask({required this.jobId, required this.title});
@@ -73,6 +92,12 @@ class AppController extends ChangeNotifier {
   List<Recording> recordings = <Recording>[];
   List<Replacement> replacements = <Replacement>[];
   ActiveTask? active;
+
+  /// File d'attente (en mémoire : perdue si l'application est fermée par le système).
+  final List<QueuedItem> queue = <QueuedItem>[];
+
+  /// Vrai quand la file est suspendue (pause, arrêt ou échec) : elle ne repart que sur demande.
+  bool queueHeld = false;
   final Map<String, ModelDownloadState> downloads = <String, ModelDownloadState>{};
   final Map<String, DownloadCancelToken> _downloadTokens = <String, DownloadCancelToken>{};
   TranscriptionRunner? _runner;
@@ -391,10 +416,13 @@ class AppController extends ChangeNotifier {
     final log = jobs.log(job.id);
     final detected = log.dominantLanguage();
     if (last != null && last.phase == RunPhase.done) {
-      final segments = applyReplacementsToSegments(collapseRepeats(log.allSegments()), replacements);
+      final segments = applyReplacementsToSegments(cleanTranscript(log.allSegments()), replacements);
       jobs.saveTranscript(job.id, segments);
       jobs.save(job.copyWith(status: JobStatus.done, detectedLanguage: detected));
       active = null;
+      refreshHistory();
+      unawaited(_startNext());
+      return;
     } else if (last != null && last.phase == RunPhase.cancelled) {
       jobs.save(job.copyWith(status: JobStatus.interrupted, detectedLanguage: detected));
       active = null;
@@ -403,14 +431,62 @@ class AppController extends ChangeNotifier {
           status: JobStatus.failed, detectedLanguage: detected, error: last?.error));
       task.errorKey = 'err_transcribe';
       task.errorDetail = last?.error;
+      if (queue.isNotEmpty) queueHeld = true;
     }
     refreshHistory();
   }
 
+  /// Met un fichier ou un enregistrement en file d'attente. Il démarre tout seul
+  /// quand la transcription en cours se termine.
+  void enqueue(QueuedItem item) {
+    queue.add(item);
+    notifyListeners();
+  }
+
+  void removeFromQueue(QueuedItem item) {
+    queue.remove(item);
+    if (queue.isEmpty) queueHeld = false;
+    notifyListeners();
+  }
+
+  void clearQueue() {
+    queue.clear();
+    queueHeld = false;
+    notifyListeners();
+  }
+
+  /// Relance la file après une pause, un arrêt ou un échec.
+  void resumeQueue() {
+    queueHeld = false;
+    notifyListeners();
+    unawaited(_startNext());
+  }
+
+  Future<void> _startNext() async {
+    if (queue.isEmpty || queueHeld || busy) return;
+    final item = queue.removeAt(0);
+    notifyListeners();
+    final model = modelById(item.modelId);
+    String? id;
+    if (model != null && models.isInstalled(model)) {
+      id = item.recording != null
+          ? await startFromRecording(item.recording!, language: item.language, model: model)
+          : await startFromFile(item.file!, language: item.language, model: model);
+    }
+    if (id == null) {
+      // Départ impossible (modèle supprimé, fichier disparu) : on suspend la file
+      // plutôt que d'enchaîner en silence ; l'erreur éventuelle reste affichée.
+      queueHeld = queue.isNotEmpty;
+      notifyListeners();
+    }
+  }
+
   /// Arrête la transcription en cours ; ce qui est fait reste enregistré.
+  /// La file d'attente est suspendue : elle repart sur demande (« Lancer »).
   void cancelTranscription() {
     final task = active;
     if (task == null) return;
+    if (queue.isNotEmpty) queueHeld = true;
     if (task.stage == 'importing') {
       unawaited(_bridge.cancelDecode());
     } else {
@@ -454,6 +530,6 @@ class AppController extends ChangeNotifier {
   /// Applique le dictionnaire au texte déjà transcrit d'une transcription.
   void reapplyReplacements(String id) {
     final raw = jobs.log(id).allSegments();
-    jobs.saveTranscript(id, applyReplacementsToSegments(collapseRepeats(raw), replacements));
+    jobs.saveTranscript(id, applyReplacementsToSegments(cleanTranscript(raw), replacements));
   }
 }

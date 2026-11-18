@@ -46,4 +46,43 @@ void main() {
     final out = collapseRepeats([seg('a', 0), seg('  ', 1), seg('b', 2)]);
     expect(out.map((s) => s.text), ['a', 'b']);
   });
+
+  test('boucle dans un segment : réduite à deux répétitions', () {
+    expect(collapseLoops('Merci Merci Merci Merci Merci'), 'Merci Merci');
+    expect(collapseLoops('Bonjour à tous bonjour à tous bonjour à tous bonjour à tous bonjour à tous fin'),
+        'Bonjour à tous bonjour à tous fin');
+    expect(collapseLoops('a b a b a b a b'), 'a b a b');
+  });
+
+  test('boucle : un texte normal ou un simple « oui oui oui » reste intact', () {
+    expect(collapseLoops('Une phrase normale sans boucle du tout ici'), 'Une phrase normale sans boucle du tout ici');
+    expect(collapseLoops('Oui oui oui'), 'Oui oui oui');
+    expect(collapseLoops('Non, non, non, c\'est faux'), 'Non, non, non, c\'est faux');
+  });
+
+  test('hallucinations : phrases parasites et marqueurs de bruit', () {
+    expect(isHallucination("Sous-titres réalisés par la communauté d'Amara.org"), isTrue);
+    expect(isHallucination('Merci d\'avoir regardé cette vidéo !'), isTrue);
+    expect(isHallucination('Thanks for watching!'), isTrue);
+    expect(isHallucination('[Musique]'), isTrue);
+    expect(isHallucination('(Applaudissements)'), isTrue);
+    expect(isHallucination('♪'), isTrue);
+    expect(isHallucination('   '), isTrue);
+    expect(isHallucination('Le parc a été créé en 2016.'), isFalse);
+    expect(isHallucination('Merci beaucoup pour votre accueil.'), isFalse);
+    expect(isHallucination('La musique congolaise est très riche.'), isFalse);
+  });
+
+  test('nettoyage complet : parasites retirés, texte utile conservé', () {
+    final out = cleanTranscript([
+      seg('Bonjour à tous.', 0),
+      seg('Sous-titrage Société Radio-Canada', 1),
+      seg('[Musique]', 2),
+      seg('Merci Merci Merci Merci Merci Merci', 3),
+      seg('Merci', 4),
+      seg('Merci', 5),
+      seg('Fin de l\'entretien.', 6),
+    ]);
+    expect(out.map((s) => s.text), ['Bonjour à tous.', 'Merci Merci', 'Merci', 'Merci', 'Fin de l\'entretien.']);
+  });
 }

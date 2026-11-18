@@ -74,6 +74,22 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
         // Ces contrôles sont un confort : on lance quand même.
       }
       if (!proceed || !mounted) return;
+      if (c.busy) {
+        // Une transcription tourne déjà : on met celle-ci en file d'attente.
+        final title = rec != null ? rec.title : AppController.titleFromFileName(chosen!.name);
+        c.enqueue(QueuedItem(
+          title: title,
+          language: language,
+          modelId: model.id,
+          file: rec == null ? chosen : null,
+          recording: rec,
+        ));
+        if (mounted) {
+          toast(context, s.t('queue_added'));
+          Navigator.of(context).pop();
+        }
+        return;
+      }
       final id = rec != null
           ? await c.startFromRecording(rec, language: language, model: model)
           : await c.startFromFile(chosen!, language: language, model: model);
@@ -97,7 +113,6 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
         model != null &&
         c.models.isInstalled(model) &&
         fit != ModelFit.tooHeavy &&
-        !c.busy &&
         !starting;
     return Scaffold(
       appBar: AppBar(
@@ -176,16 +191,11 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
               padding: const EdgeInsets.only(top: 8),
               child: _Notice(icon: Icons.block, text: s.t('warn_model_too_heavy')),
             ),
-          if (c.busy)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: _Notice(icon: Icons.hourglass_top, text: s.t('already_running')),
-            ),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: canStart ? _start : null,
-            icon: const Icon(Icons.play_arrow),
-            label: Text(s.t('start')),
+            icon: Icon(c.busy ? Icons.playlist_add : Icons.play_arrow),
+            label: Text(c.busy ? s.t('queue_add') : s.t('start')),
           ),
           const SizedBox(height: 24),
           Text(s.t('tips_title'), style: Theme.of(context).textTheme.titleSmall),
