@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import '../transcription/transcript.dart';
+import 'docx.dart';
 
 /// Formats d'export de la V1.
-enum ExportFormat { txt, srt }
+enum ExportFormat { txt, srt, docx }
 
 /// « 00:01:05,320 » (format SRT).
 String srtTime(int ms) {
@@ -54,9 +58,17 @@ String toSrt(List<Segment> segments) {
   return buffer.toString();
 }
 
-String exportExtension(ExportFormat f) => f == ExportFormat.srt ? 'srt' : 'txt';
+String exportExtension(ExportFormat f) => switch (f) {
+      ExportFormat.srt => 'srt',
+      ExportFormat.docx => 'docx',
+      ExportFormat.txt => 'txt',
+    };
 
-String exportMime(ExportFormat f) => f == ExportFormat.srt ? 'application/x-subrip' : 'text/plain';
+String exportMime(ExportFormat f) => switch (f) {
+      ExportFormat.srt => 'application/x-subrip',
+      ExportFormat.docx => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ExportFormat.txt => 'text/plain',
+    };
 
 /// Nom de fichier sûr (sans caractères interdits ni espaces multiples).
 String safeFileName(String title, {String fallback = 'transcription'}) {
@@ -66,6 +78,22 @@ String safeFileName(String title, {String fallback = 'transcription'}) {
   return s.isEmpty ? fallback : s;
 }
 
+/// Texte d'un export TXT ou SRT (le DOCX, binaire, passe par [exportBytes]).
 String exportContent(List<Segment> segments, ExportFormat format, {bool timestamps = false}) {
   return format == ExportFormat.srt ? toSrt(segments) : toPlainText(segments, timestamps: timestamps);
+}
+
+/// Contenu du fichier d'export, quel que soit le format. [title] et [subtitle]
+/// ne servent qu'au DOCX.
+Uint8List exportBytes(
+  List<Segment> segments,
+  ExportFormat format, {
+  bool timestamps = false,
+  String title = '',
+  String subtitle = '',
+}) {
+  if (format == ExportFormat.docx) {
+    return buildDocx(title: title, segments: segments, timestamps: timestamps, subtitle: subtitle);
+  }
+  return Uint8List.fromList(utf8.encode(exportContent(segments, format, timestamps: timestamps)));
 }

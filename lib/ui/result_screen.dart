@@ -157,9 +157,39 @@ class _ResultScreenState extends State<ResultScreen> {
       await c.exporter.share(segments, format,
           title: job.title,
           chooserTitle: s.t('share_title'),
-          timestamps: showTimestamps);
+          timestamps: showTimestamps,
+          subtitle: _subtitle());
     } on PlatformFailure {
       if (mounted) toast(context, s.t('err_share'));
+    }
+  }
+
+  String _subtitle() => '${formatDate(job.createdAt)} · ${formatDuration(job.durationMs)}';
+
+  /// « Enregistrer sous… » : choix du format, puis du dossier (sélecteur d'Android).
+  Future<void> _saveAs() async {
+    final s = c.strings;
+    final format = await showDialog<ExportFormat>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(s.t('choose_format')),
+        children: <Widget>[
+          SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, ExportFormat.txt), child: Text(s.t('format_txt'))),
+          SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, ExportFormat.srt), child: Text(s.t('format_srt'))),
+          SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, ExportFormat.docx), child: Text(s.t('format_docx'))),
+        ],
+      ),
+    );
+    if (format == null) return;
+    try {
+      final saved = await c.exporter.saveAs(segments, format,
+          title: job.title, timestamps: showTimestamps, subtitle: _subtitle());
+      if (saved && mounted) toast(context, s.t('file_saved'));
+    } on PlatformFailure {
+      if (mounted) toast(context, s.t('file_save_failed'));
     }
   }
 
@@ -195,6 +225,10 @@ class _ResultScreenState extends State<ResultScreen> {
         await _share(ExportFormat.txt);
       case 'srt':
         await _share(ExportFormat.srt);
+      case 'docx':
+        await _share(ExportFormat.docx);
+      case 'save_as':
+        await _saveAs();
       case 'share_audio':
         await _shareAudio();
       case 'save_audio':
@@ -286,6 +320,8 @@ class _ResultScreenState extends State<ResultScreen> {
               PopupMenuItem<String>(value: 'copy', child: Text(s.t('copy'))),
               PopupMenuItem<String>(value: 'txt', child: Text(s.t('share_txt'))),
               PopupMenuItem<String>(value: 'srt', child: Text(s.t('share_srt'))),
+              PopupMenuItem<String>(value: 'docx', child: Text(s.t('share_docx'))),
+              PopupMenuItem<String>(value: 'save_as', child: Text(s.t('save_as'))),
               if (job.hasAudio) ...<PopupMenuEntry<String>>[
                 PopupMenuItem<String>(value: 'share_audio', child: Text(s.t('share_audio'))),
                 PopupMenuItem<String>(value: 'save_audio', child: Text(s.t('save_audio_as'))),

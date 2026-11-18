@@ -25,6 +25,7 @@ class ExportService {
     ExportFormat format, {
     required String title,
     bool timestamps = false,
+    String subtitle = '',
   }) {
     final dir = Directory('$cacheDir/exports')..createSync(recursive: true);
     // Un seul export à la fois : on évite d'accumuler des fichiers.
@@ -32,7 +33,9 @@ class ExportService {
       if (e is File) e.deleteSync();
     }
     final file = File('${dir.path}/${safeFileName(title)}.${exportExtension(format)}');
-    file.writeAsStringSync(exportContent(segments, format, timestamps: timestamps), flush: true);
+    file.writeAsBytesSync(
+        exportBytes(segments, format, timestamps: timestamps, title: title, subtitle: subtitle),
+        flush: true);
     return file;
   }
 
@@ -42,9 +45,28 @@ class ExportService {
     required String title,
     required String chooserTitle,
     bool timestamps = false,
+    String subtitle = '',
   }) {
-    final file = writeExport(segments, format, title: title, timestamps: timestamps);
+    final file =
+        writeExport(segments, format, title: title, timestamps: timestamps, subtitle: subtitle);
     return _bridge.shareFile(path: file.path, mime: exportMime(format), title: chooserTitle);
+  }
+
+  /// « Enregistrer sous… » : l'utilisateur choisit le dossier et le nom. Faux s'il annule.
+  Future<bool> saveAs(
+    List<Segment> segments,
+    ExportFormat format, {
+    required String title,
+    bool timestamps = false,
+    String subtitle = '',
+  }) {
+    final file =
+        writeExport(segments, format, title: title, timestamps: timestamps, subtitle: subtitle);
+    return _bridge.saveFileAs(
+      path: file.path,
+      name: '${safeFileName(title)}.${exportExtension(format)}',
+      mime: exportMime(format),
+    );
   }
 
   /// Copie l'audio WAV dans cache/exports puis ouvre le menu de partage Android.
