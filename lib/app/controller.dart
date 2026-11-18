@@ -160,14 +160,14 @@ class AppController extends ChangeNotifier {
   }
 
   /// Fichiers reçus pendant que l'application tourne.
-  Stream<PickedFile> sharedFilesStream() => _bridge.sharedFiles;
+  Stream<List<PickedFile>> sharedFilesStream() => _bridge.sharedFiles;
 
-  /// Fichier reçu au lancement (« Partager vers Andika »), une seule fois.
-  Future<PickedFile?> initialShare() async {
+  /// Fichiers reçus au lancement (« Partager vers Andika »), une seule fois.
+  Future<List<PickedFile>> initialShares() async {
     try {
-      return await _bridge.getInitialShare();
+      return await _bridge.getInitialShares();
     } on PlatformFailure {
-      return null;
+      return <PickedFile>[];
     }
   }
 

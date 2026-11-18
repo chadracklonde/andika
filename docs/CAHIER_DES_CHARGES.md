@@ -68,6 +68,10 @@ Les journalistes, chercheurs et communicateurs ont besoin de transformer rapidem
 | F18 | Récupérer l'audio | Partager un enregistrement ou le copier (« Enregistrer sous… ») vers un dossier choisi par l'utilisateur, au format WAV | Haute |
 | F19 | Enregistrer sous… | Exporter la transcription (TXT, SRT, DOCX) vers un dossier choisi, en plus du partage | Moyenne |
 | F20 | Export de l'audio d'une transcription | Depuis le résultat, partager ou enregistrer l'audio converti associé | Basse |
+| F21 | Recherche dans toutes les transcriptions | Depuis l'accueil, chercher un mot, un nom ou un lieu (sans tenir compte des accents ni de la casse) dans les titres et les textes de toute la bibliothèque ; extraits avec le passage surligné ; un appui ouvre la transcription au bon endroit | Haute |
+| F22 | Partage de plusieurs fichiers | « Partager vers Andika » avec plusieurs fichiers à la fois (sélection multiple dans WhatsApp ou le gestionnaire de fichiers) : réglages choisis une fois, fichiers transcrits à la suite | Haute |
+| F23 | Repères pendant l'enregistrement | Un bouton drapeau pose un repère à l'instant présent ; les repères s'affichent sur l'onde, sont conservés avec l'enregistrement et permettent d'écouter à partir de chacun dans la bibliothèque | Moyenne |
+| F24 | Suivi du passage lu | Pendant l'écoute d'une transcription, la liste défile avec le passage en cours | Basse |
 
 ## 5. Exigences non fonctionnelles
 

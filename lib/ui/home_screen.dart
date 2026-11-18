@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
 import '../export/exporters.dart';
+import '../platform/platform_bridge.dart';
 import '../recorder/recorder_controller.dart';
 import '../storage/job.dart';
 import 'about_screen.dart';
@@ -12,6 +13,7 @@ import 'progress_screen.dart';
 import 'recorder_screen.dart';
 import 'recordings_screen.dart';
 import 'result_screen.dart';
+import 'search_screen.dart';
 import 'settings_screen.dart';
 
 /// Accueil : historique et accès aux autres écrans.
@@ -31,20 +33,24 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // Fichier reçu par « Partager vers Andika » pendant que l'application tourne.
-    c.sharedFilesStream().listen((file) {
-      if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => NewTranscriptionScreen(controller: c, initialFile: file),
-      ));
-    });
+    c.sharedFilesStream().listen(_openShared);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final first = await c.initialShare();
-      if (first != null && mounted) {
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => NewTranscriptionScreen(controller: c, initialFile: first),
-        ));
-      }
+      final first = await c.initialShares();
+      if (mounted) _openShared(first);
     });
+  }
+
+  /// Un ou plusieurs fichiers reçus : le premier ouvre l'écran de réglages,
+  /// les suivants sont traités à la suite avec les mêmes réglages.
+  void _openShared(List<PickedFile> files) {
+    if (!mounted || files.isEmpty) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => NewTranscriptionScreen(
+        controller: c,
+        initialFile: files.first,
+        extraFiles: files.sublist(1),
+      ),
+    ));
   }
 
   @override
@@ -57,6 +63,13 @@ class _HomeScreenState extends State<HomeScreen> {
           appBar: AppBar(
             title: const Text('Andika'),
             actions: <Widget>[
+              IconButton(
+                tooltip: s.t('search_all'),
+                icon: const Icon(Icons.search),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => SearchScreen(controller: c),
+                )),
+              ),
               IconButton(
                 tooltip: s.t('recorder'),
                 icon: const Icon(Icons.mic_none),

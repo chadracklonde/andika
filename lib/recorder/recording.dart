@@ -6,6 +6,7 @@ class Recording {
     required this.createdAt,
     required this.durationMs,
     required this.sizeBytes,
+    this.markers = const <int>[],
   });
 
   final String id;
@@ -14,12 +15,16 @@ class Recording {
   final int durationMs;
   final int sizeBytes;
 
+  /// Repères posés pendant l'enregistrement (instants en millisecondes, du plus ancien au plus récent).
+  final List<int> markers;
+
   Recording copyWith({String? title, int? durationMs, int? sizeBytes}) => Recording(
         id: id,
         title: title ?? this.title,
         createdAt: createdAt,
         durationMs: durationMs ?? this.durationMs,
         sizeBytes: sizeBytes ?? this.sizeBytes,
+        markers: markers,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -28,6 +33,7 @@ class Recording {
         'createdAt': createdAt.toUtc().toIso8601String(),
         'durationMs': durationMs,
         'sizeBytes': sizeBytes,
+        if (markers.isNotEmpty) 'markers': markers,
       };
 
   static Recording fromJson(Map<String, Object?> json) => Recording(
@@ -36,6 +42,10 @@ class Recording {
         createdAt: DateTime.parse(json['createdAt'] as String),
         durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
         sizeBytes: (json['sizeBytes'] as num?)?.toInt() ?? 0,
+        markers: ((json['markers'] as List<Object?>?) ?? const <Object?>[])
+            .whereType<num>()
+            .map((n) => n.toInt())
+            .toList(),
       );
 }
 

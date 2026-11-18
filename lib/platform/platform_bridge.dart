@@ -114,7 +114,7 @@ class PlatformBridge {
   static const MethodChannel _channel = MethodChannel('org.chadracklonde.andika/platform');
 
   final StreamController<int> _decodeProgress = StreamController<int>.broadcast();
-  final StreamController<PickedFile> _shared = StreamController<PickedFile>.broadcast();
+  final StreamController<List<PickedFile>> _shared = StreamController<List<PickedFile>>.broadcast();
   final StreamController<Map<String, Object?>> _events =
       StreamController<Map<String, Object?>>.broadcast();
   bool _started = false;
@@ -129,8 +129,8 @@ class PlatformBridge {
   /// Progression du décodage, de 0 à 100.
   Stream<int> get decodeProgress => _decodeProgress.stream;
 
-  /// Fichier reçu pendant que l'application tourne (« Partager vers Andika »).
-  Stream<PickedFile> get sharedFiles => _shared.stream;
+  /// Fichiers reçus pendant que l'application tourne (« Partager vers Andika », un ou plusieurs).
+  Stream<List<PickedFile>> get sharedFiles => _shared.stream;
 
   /// Événements divers venant d'Android (service, lecteur...) : {'name': ..., 'data': ...}.
   Stream<Map<String, Object?>> get events => _events.stream;
@@ -141,7 +141,7 @@ class PlatformBridge {
         _decodeProgress.add((call.arguments as num).toInt());
         break;
       case 'shared':
-        _shared.add(PickedFile.fromMap(Map<Object?, Object?>.from(call.arguments as Map)));
+        _shared.add(_pickedList(call.arguments));
         break;
       default:
         _events.add(<String, Object?>{'name': call.method, 'data': call.arguments});
@@ -167,12 +167,24 @@ class PlatformBridge {
     });
   }
 
-  /// Fichier avec lequel l'application a été ouverte (partage), une seule fois.
-  Future<PickedFile?> getInitialShare() {
-    return _guard<PickedFile?>(() async {
-      final map = await _channel.invokeMethod<Map<Object?, Object?>>('getInitialShare');
-      return map == null ? null : PickedFile.fromMap(map);
+  /// Fichiers avec lesquels l'application a été ouverte (partage), une seule fois.
+  Future<List<PickedFile>> getInitialShares() {
+    return _guard<List<PickedFile>>(() async {
+      final raw = await _channel.invokeMethod<Object?>('getInitialShare');
+      return _pickedList(raw);
     });
+  }
+
+  /// Liste de fichiers venant d'Android ; accepte aussi un fichier seul (ancien format).
+  static List<PickedFile> _pickedList(Object? raw) {
+    if (raw is List) {
+      return raw
+          .whereType<Map<Object?, Object?>>()
+          .map(PickedFile.fromMap)
+          .toList();
+    }
+    if (raw is Map) return <PickedFile>[PickedFile.fromMap(Map<Object?, Object?>.from(raw))];
+    return <PickedFile>[];
   }
 
   Future<DeviceInfo> getDeviceInfo() {

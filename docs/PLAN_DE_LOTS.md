@@ -22,6 +22,7 @@ Chaque lot est livrable et testable seul. Les durées sont indicatives, certains
 | L11 | Légal et publication | L10 | 1 à 2 semaines |
 | L12 | Enregistreur et bibliothèque d'enregistrements | L4, L6 | 1,5 à 2 semaines |
 | L13 | Export élargi (DOCX, Enregistrer sous…, audio) | L7, L12 | 1 semaine |
+| L13b | Recherche globale, partage multiple, repères | L7, L12 | 2 à 3 jours |
 | L14 | Après la V1 | L11 | hors V1 |
 
 ## L0 — Préparation et décisions
@@ -220,6 +221,17 @@ Chaque lot est livrable et testable seul. Les durées sont indicatives, certains
 
 **Fin du lot :** le DOCX s'ouvre dans Word ou LibreOffice ; les fichiers enregistrés sous… sont lisibles.
 
+## L13b — Recherche globale, partage multiple, repères
+
+**Objectif :** F21 à F24.
+
+- L13b.1 Recherche dans l'historique (`searchHistory`, écran de recherche, ouverture au bon passage).
+- L13b.2 Intent `SEND_MULTIPLE`, liste de fichiers du côté Kotlin et Dart, mise à la suite avec les mêmes réglages.
+- L13b.3 Repères : bouton, drapeaux sur l'onde, stockage dans la fiche, puces d'écoute dans la bibliothèque.
+- L13b.4 Défilement de la liste avec la lecture, textes FR/EN, tests.
+
+**Fin du lot :** une recherche retrouve un nom dans plusieurs transcriptions ; trois vocaux partagés depuis WhatsApp sont transcrits à la suite ; un repère posé à l'enregistrement permet d'écouter à partir de là.
+
 ## L14 — Après la V1
 
 Hors périmètre de la V1, à planifier ensuite :
@@ -254,6 +266,7 @@ Chaque exigence du cahier des charges est rattachée à au moins un lot.
 | F18 Récupérer l'audio | L12, L13 |
 | F19 Enregistrer sous… | L13 |
 | F20 Export de l'audio d'une transcription | L13 |
+| F21 à F24 Recherche globale, partage multiple, repères, suivi du passage | L13b |
 | Hors ligne | L3, L4 |
 | Confidentialité | L4, L11 |
 | Compatibilité | L1, L10 |

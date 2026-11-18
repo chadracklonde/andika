@@ -11,6 +11,7 @@ class RecordingWaveform extends StatelessWidget {
     required this.levelsOffset,
     required this.elapsedMs,
     required this.bucketMs,
+    this.markers = const <int>[],
     this.height = 260,
   });
 
@@ -18,6 +19,7 @@ class RecordingWaveform extends StatelessWidget {
   final int levelsOffset;
   final int elapsedMs;
   final int bucketMs;
+  final List<int> markers;
   final double height;
 
   @override
@@ -33,6 +35,7 @@ class RecordingWaveform extends StatelessWidget {
             levelsOffset: levelsOffset,
             elapsedMs: elapsedMs,
             bucketMs: bucketMs,
+            markers: markers,
             background: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
             bar: const Color(0xFFE8473F),
             tick: scheme.onSurfaceVariant.withValues(alpha: 0.5),
@@ -50,6 +53,7 @@ class WaveformPainter extends CustomPainter {
     required this.levelsOffset,
     required this.elapsedMs,
     required this.bucketMs,
+    required this.markers,
     required this.background,
     required this.bar,
     required this.tick,
@@ -60,6 +64,7 @@ class WaveformPainter extends CustomPainter {
   final int levelsOffset;
   final int elapsedMs;
   final int bucketMs;
+  final List<int> markers;
   final Color background;
   final Color bar;
   final Color tick;
@@ -118,6 +123,24 @@ class WaveformPainter extends CustomPainter {
       }
     }
 
+    // Repères : un drapeau orange sur la ligne du temps.
+    final flag = Paint()
+      ..color = const Color(0xFFF59E0B)
+      ..strokeWidth = 2;
+    for (final m in markers) {
+      final x = xAt(m, elapsedMs, w);
+      if (x < -12 || x > w + 12) continue;
+      canvas.drawLine(Offset(x, 6), Offset(x, plotH), flag);
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, 6)
+          ..lineTo(x + 14, 12)
+          ..lineTo(x, 18)
+          ..close(),
+        Paint()..color = const Color(0xFFF59E0B),
+      );
+    }
+
     // Tête de lecture.
     final head = Paint()
       ..color = bar
@@ -132,5 +155,6 @@ class WaveformPainter extends CustomPainter {
       old.elapsedMs != elapsedMs ||
       old.levels.length != levels.length ||
       old.levelsOffset != levelsOffset ||
+      old.markers.length != markers.length ||
       old.background != background;
 }

@@ -80,18 +80,30 @@ class PlatformBridge(
         )
     }
 
-    private fun sharedUri(intent: Intent?): Uri? {
-        if (intent == null) return null
+    /// Fichiers reçus par « Partager » (un ou plusieurs, par exemple des vocaux WhatsApp) ou « Ouvrir avec ».
+    private fun sharedUris(intent: Intent?): List<Uri> {
+        if (intent == null) return emptyList()
         return when (intent.action) {
-            Intent.ACTION_SEND ->
-                if (Build.VERSION.SDK_INT >= 33) {
+            Intent.ACTION_SEND -> {
+                val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
                     intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 } else {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 }
-            Intent.ACTION_VIEW -> intent.data
-            else -> null
+                listOfNotNull(uri)
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                val list: ArrayList<Uri>? = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                }
+                list?.filterNotNull() ?: emptyList()
+            }
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            else -> emptyList()
         }
     }
 
@@ -101,9 +113,9 @@ class PlatformBridge(
         when (call.method) {
             "pickAudio" -> pickAudio(result)
             "getInitialShare" -> {
-                val uri = if (shareConsumed) null else sharedUri(activity.intent)
+                val uris = if (shareConsumed) emptyList() else sharedUris(activity.intent)
                 shareConsumed = true
-                result.success(if (uri != null) describe(uri) else null)
+                result.success(uris.map { describe(it) })
             }
             "getDeviceInfo" -> result.success(deviceInfo())
             "getPaths" -> result.success(
@@ -216,8 +228,9 @@ class PlatformBridge(
     }
 
     fun onNewIntent(intent: Intent) {
-        val uri = sharedUri(intent) ?: return
-        emit("shared", describe(uri))
+        val uris = sharedUris(intent)
+        if (uris.isEmpty()) return
+        emit("shared", uris.map { describe(it) })
     }
 
     private fun shareFile(path: String, mime: String, title: String) {

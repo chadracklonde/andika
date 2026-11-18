@@ -130,6 +130,7 @@ class RecorderScreen extends StatelessWidget {
                     levelsOffset: r.levelsOffset,
                     elapsedMs: r.elapsedMs,
                     bucketMs: RecorderController.levelBucketMs,
+                    markers: r.markers,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -201,7 +202,24 @@ class RecorderScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const SizedBox(width: 52),
+                      Tooltip(
+                        message: s.t('rec_marker'),
+                        child: InkResponse(
+                          onTap: r.active
+                              ? () {
+                                  final at = r.addMarker();
+                                  if (at != null) {
+                                    toast(context, s.t('rec_marker_added', {'time': clockTime(at)}));
+                                  }
+                                }
+                              : null,
+                          radius: 32,
+                          child: Opacity(
+                            opacity: r.active ? 1 : 0.35,
+                            child: const _RoundIcon(icon: Icons.flag_outlined, size: 52),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

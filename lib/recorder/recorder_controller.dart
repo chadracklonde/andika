@@ -52,6 +52,17 @@ class RecorderController extends ChangeNotifier {
   /// Titre que portera l'enregistrement en cours.
   String? currentTitle;
 
+  /// Repères posés pendant l'enregistrement en cours (instants en ms).
+  final List<int> markers = <int>[];
+
+  /// Pose un repère à l'instant présent. Retourne l'instant, ou null si rien n'est en cours.
+  int? addMarker() {
+    if (!active) return null;
+    markers.add(elapsedMs);
+    notifyListeners();
+    return elapsedMs;
+  }
+
   /// Clé de texte de l'erreur à afficher, ou null.
   String? errorKey;
 
@@ -127,6 +138,7 @@ class RecorderController extends ChangeNotifier {
       level = 0;
       levels.clear();
       levelsOffset = 0;
+      markers.clear();
       currentTitle = defaultTitle(DateTime.now().toUtc());
       notifyListeners();
       return true;
@@ -198,7 +210,9 @@ class RecorderController extends ChangeNotifier {
       createdAt: created,
       durationMs: repaired,
       sizeBytes: File(path).lengthSync(),
+      markers: markers.where((m) => m <= repaired).toList(),
     );
+    markers.clear();
     store.save(rec);
     _lastFinished = rec;
     notifyListeners();

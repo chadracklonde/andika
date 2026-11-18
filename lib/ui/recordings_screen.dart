@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
+import '../export/exporters.dart';
 import '../platform/platform_bridge.dart';
 import '../player/audio_player.dart';
 import '../recorder/recording.dart';
@@ -71,6 +72,15 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
       _playingId = rec.id;
       _state = const PlayerState();
     });
+  }
+
+  /// Écoute à partir d'un repère.
+  Future<void> _playFrom(Recording rec, int ms) async {
+    if (_playingId != rec.id || _player == null) await _togglePlay(rec);
+    if (_playingId == rec.id) {
+      await _player?.seek(ms);
+      if (!_state.playing) await _player?.play();
+    }
   }
 
   Future<void> _rename(Recording rec) async {
@@ -299,6 +309,27 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
                     ),
                   ],
                 ),
+                if (rec.markers.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 4),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: <Widget>[
+                          Text(s.t('rec_markers'), style: theme.textTheme.labelLarge),
+                          for (final m in rec.markers)
+                            ActionChip(
+                              avatar: const Icon(Icons.flag, size: 16, color: Color(0xFFF59E0B)),
+                              label: Text(clockTime(m)),
+                              onPressed: () => unawaited(_playFrom(rec, m)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(

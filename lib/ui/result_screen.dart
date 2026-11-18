@@ -16,10 +16,20 @@ import 'progress_screen.dart';
 
 /// Texte d'une transcription : lecture, relecture, recherche et export.
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({super.key, required this.controller, required this.jobId});
+  const ResultScreen({
+    super.key,
+    required this.controller,
+    required this.jobId,
+    this.initialQuery,
+    this.initialSegment = 0,
+  });
 
   final AppController controller;
   final String jobId;
+
+  /// Venu de la recherche globale : la recherche s'ouvre sur ce texte, au bon passage.
+  final String? initialQuery;
+  final int initialSegment;
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -40,6 +50,7 @@ class _ResultScreenState extends State<ResultScreen> {
   PlayerState playerState = const PlayerState();
   double speed = 1.0;
   bool playerReady = false;
+  int _followed = -1;
 
   @override
   void initState() {
@@ -48,6 +59,20 @@ class _ResultScreenState extends State<ResultScreen> {
     segments = c.transcriptOf(widget.jobId);
     showTimestamps = c.settings.exportTimestamps;
     _initPlayer();
+    final q = widget.initialQuery;
+    if (q != null && q.isNotEmpty) {
+      searching = true;
+      searchField.text = q;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _runSearch();
+        final at = hits.indexWhere((h) => h.segmentIndex >= widget.initialSegment);
+        if (at > 0) {
+          setState(() => hitIndex = at);
+          _scrollToSegment(hits[at].segmentIndex);
+        }
+      });
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -65,7 +90,16 @@ class _ResultScreenState extends State<ResultScreen> {
     }
     player = p;
     playerSub = p.states.listen((st) {
-      if (mounted) setState(() => playerState = st);
+      if (!mounted) return;
+      setState(() => playerState = st);
+      // Pendant l'écoute, la liste suit le passage lu.
+      if (st.playing) {
+        final now = segmentIndexAt(segments, st.positionMs);
+        if (now >= 0 && now != _followed) {
+          _followed = now;
+          _scrollToSegment(now);
+        }
+      }
     });
     setState(() => playerReady = true);
   }

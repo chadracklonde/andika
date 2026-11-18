@@ -12,10 +12,19 @@ import 'progress_screen.dart';
 
 /// Choix du fichier, de la langue et du modèle, puis lancement.
 class NewTranscriptionScreen extends StatefulWidget {
-  const NewTranscriptionScreen({super.key, required this.controller, this.initialFile, this.recording});
+  const NewTranscriptionScreen({
+    super.key,
+    required this.controller,
+    this.initialFile,
+    this.recording,
+    this.extraFiles = const <PickedFile>[],
+  });
 
   final AppController controller;
   final PickedFile? initialFile;
+
+  /// Autres fichiers reçus en même temps : mis à la suite avec les mêmes réglages.
+  final List<PickedFile> extraFiles;
 
   /// Enregistrement du dictaphone à transcrire (à la place d'un fichier importé).
   final Recording? recording;
@@ -59,6 +68,17 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
     if (picked != null && mounted) setState(() => file = picked);
   }
 
+  void _enqueueExtras(WhisperModel model) {
+    for (final extra in widget.extraFiles) {
+      c.enqueue(QueuedItem(
+        title: AppController.titleFromFileName(extra.name),
+        language: language,
+        modelId: model.id,
+        file: extra,
+      ));
+    }
+  }
+
   Future<void> _start() async {
     final s = c.strings;
     final chosen = file;
@@ -95,6 +115,7 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
           file: rec == null ? chosen : null,
           recording: rec,
         ));
+        _enqueueExtras(model);
         if (mounted) {
           toast(context, s.t('queue_added'));
           Navigator.of(context).pop();
@@ -104,6 +125,7 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
       final id = rec != null
           ? await c.startFromRecording(rec, language: language, model: model)
           : await c.startFromFile(chosen!, language: language, model: model);
+      _enqueueExtras(model);
       if (!mounted) return;
       // Même en cas d'échec d'import, l'écran de progression affiche l'erreur.
       Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
@@ -152,6 +174,14 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
                   onPressed: _pick,
                   child: Text(file == null ? s.t('choose_file') : s.t('change_file')),
                 ),
+              ),
+            ),
+          if (widget.extraFiles.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+              child: Text(
+                s.t('extra_files', {'n': '${widget.extraFiles.length}'}),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
           const SizedBox(height: 16),

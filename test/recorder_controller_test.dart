@@ -177,4 +177,32 @@ void main() {
     expect(formatPrecise(125990), '02:05,99');
     expect(formatPrecise(-5), '00:00,00');
   });
+
+  test('repères : posés pendant l\'enregistrement, conservés dans la fiche', () async {
+    expect(rec.addMarker(), isNull); // rien en cours
+    await rec.start();
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 700, 'level': 0.2});
+    expect(rec.addMarker(), 700);
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 1500, 'level': 0.2});
+    expect(rec.addMarker(), 1500);
+    // Un repère au-delà de la durée finale (2000 ms dans ce test) serait écarté.
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 9000, 'level': 0.2});
+    rec.addMarker();
+    final saved = await rec.stop();
+    expect(saved!.markers, <int>[700, 1500]);
+    expect(store.load(saved.id)!.markers, <int>[700, 1500]);
+    expect(rec.markers, isEmpty);
+  });
+
+  test('fiche sans repères : lecture d\'un ancien fichier', () {
+    final r = Recording.fromJson(<String, Object?>{
+      'id': 'x',
+      'title': 't',
+      'createdAt': '2026-11-18T10:00:00.000Z',
+      'durationMs': 1000,
+      'sizeBytes': 5,
+    });
+    expect(r.markers, isEmpty);
+    expect(r.toJson().containsKey('markers'), isFalse);
+  });
 }

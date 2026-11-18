@@ -1,3 +1,4 @@
+import '../storage/job.dart';
 import '../transcription/transcript.dart';
 
 /// Un résultat de recherche dans un texte.
@@ -38,6 +39,76 @@ List<SearchHit> searchSegments(List<Segment> segments, String query) {
       if (at < 0) break;
       hits.add(SearchHit(segmentIndex: i, start: at, end: at + q.length));
       from = at + q.length;
+    }
+  }
+  return hits;
+}
+
+/// Un résultat dans l'historique : une transcription, un segment et un extrait.
+class HistoryHit {
+  const HistoryHit({
+    required this.job,
+    required this.segmentIndex,
+    required this.startMs,
+    required this.before,
+    required this.match,
+    required this.after,
+  });
+
+  final Job job;
+
+  /// -1 quand c'est le titre qui correspond.
+  final int segmentIndex;
+  final int startMs;
+
+  /// Extrait autour du passage trouvé : texte avant, passage, texte après.
+  final String before;
+  final String match;
+  final String after;
+}
+
+/// Cherche [query] dans les titres et les textes de toutes les transcriptions.
+/// [load] fournit les segments d'une transcription. Les plus récentes passent d'abord
+/// (l'ordre de [jobs] est conservé) ; la recherche s'arrête à [maxHits] résultats.
+List<HistoryHit> searchHistory(
+  List<Job> jobs,
+  List<Segment> Function(String jobId) load,
+  String query, {
+  int maxHits = 200,
+  int context = 40,
+}) {
+  final q = foldForSearch(query.trim());
+  if (q.length < 2) return <HistoryHit>[];
+  final hits = <HistoryHit>[];
+  for (final job in jobs) {
+    if (hits.length >= maxHits) break;
+    if (foldForSearch(job.title).contains(q)) {
+      hits.add(HistoryHit(
+        job: job,
+        segmentIndex: -1,
+        startMs: 0,
+        before: '',
+        match: job.title,
+        after: '',
+      ));
+    }
+    final segments = load(job.id);
+    for (var i = 0; i < segments.length && hits.length < maxHits; i++) {
+      final folded = foldForSearch(segments[i].text);
+      // Cas rare où la mise en minuscules change la longueur : l'extrait est alors sans accents.
+      final text = folded.length == segments[i].text.length ? segments[i].text : folded;
+      final at = folded.indexOf(q);
+      if (at < 0) continue;
+      final from = at - context < 0 ? 0 : at - context;
+      final to = at + q.length + context > text.length ? text.length : at + q.length + context;
+      hits.add(HistoryHit(
+        job: job,
+        segmentIndex: i,
+        startMs: segments[i].startMs,
+        before: (from > 0 ? '…' : '') + text.substring(from, at),
+        match: text.substring(at, at + q.length),
+        after: text.substring(at + q.length, to) + (to < text.length ? '…' : ''),
+      ));
     }
   }
   return hits;
