@@ -32,8 +32,6 @@ class RunProgress {
 
 /// Lance et suit une transcription dans un isolate. Une instance = une tâche.
 class TranscriptionRunner {
-  Isolate? _isolate;
-  ReceivePort? _port;
   int? _engineAddress;
   bool _cancelRequested = false;
 
@@ -47,7 +45,6 @@ class TranscriptionRunner {
     final port = ReceivePort();
     final errors = ReceivePort();
     final exit = ReceivePort();
-    _port = port;
     var finished = false;
 
     void finish(RunProgress last) {
@@ -57,7 +54,6 @@ class TranscriptionRunner {
       port.close();
       errors.close();
       exit.close();
-      _isolate = null;
       _engineAddress = null;
       controller.close();
     }
@@ -134,7 +130,6 @@ class TranscriptionRunner {
       onExit: exit.sendPort,
       errorsAreFatal: true,
     ).then((isolate) {
-      _isolate = isolate;
       if (finished) isolate.kill(priority: Isolate.immediate);
     }, onError: (Object e) {
       finish(RunProgress(phase: RunPhase.failed, error: e.toString()));

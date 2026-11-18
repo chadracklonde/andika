@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
 import '../app/settings.dart';
-import '../models/model_catalog.dart';
 import 'common.dart';
 import 'dictionary_screen.dart';
 
