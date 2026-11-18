@@ -4,18 +4,29 @@ Dernière mise à jour : voir l'historique Git. Ce fichier dit, lot par lot, ce 
 
 ## Résumé à lire en premier
 
-Les lots **L0 à L11 sont écrits et poussés** sur `main`. **Rien n'a été compilé ni lancé** :
-ni Flutter, ni Kotlin, ni Gradle, ni sur téléphone. Seule la couche native C++ (whisper.cpp)
-a été compilée et testée (28 contrôles sur 28) avec un modèle factice. Il n'y a donc **aucune
-preuve que l'application démarre**, et des erreurs de compilation sont probables.
+Les lots **L0 à L11 sont écrits et poussés** sur `main`. Aucun SDK n'était disponible dans
+l'environnement de développement, mais le **CI GitHub** (Flutter 3.50.0, Dart 3.14) a servi de
+compilateur et a donné de vrais retours. État de la dernière exécution (18 nov. 2026) :
 
-Ce qui a été contrôlé par des outils : syntaxe de 53 fichiers Dart/Kotlin, cohérence entre
-fichiers (`tools/check_consistency.py`), parité des textes FR/EN, tests natifs, calcul du taux
-d'erreurs. Détail et écarts : `docs/RAPPORT_QUALITE.md`.
+- `flutter analyze` : aucune alerte.
+- `flutter test` : 71 tests Dart passent.
+- `flutter build apk --debug` (arm64) : **réussi**, y compris la compilation native de
+  whisper.cpp par CMake et le NDK.
+- Tests natifs C++ : 28 sur 28.
 
-Ce qui reste à faire, dans l'ordre : `flutter pub get && flutter analyze` (corriger), `flutter
-test`, `flutter build apk --debug`, essai sur téléphone avec le modèle `tiny` puis `base`,
-mesures (`MESURES.md`), puis `docs/PUBLICATION.md`.
+**Toujours non vérifié : tout ce qui demande un téléphone.** Aucune transcription réelle (pas
+de modèle téléchargé), aucun affichage de l'interface, aucune mesure de vitesse, de mémoire ni
+de batterie, aucun test du service d'arrière-plan, du lecteur audio, du partage, de TalkBack.
+Les critères C1 à C6 ne sont donc pas validés (`docs/RAPPORT_QUALITE.md`).
+
+Défauts trouvés grâce au CI et corrigés : 5 alertes d'analyse ; textes système en français
+absents (l'application aurait pu planter à l'ouverture d'un dialogue ; ajout de
+`flutter_localizations`) ; configuration Gradle trop ancienne pour Flutter 3.50 (passée à
+Gradle 9.5, AGP 9.3.1, Kotlin 2.4.20 d'après un projet témoin).
+
+Pour essayer : onglet « Actions » du dépôt, dernière exécution du CI, télécharger l'artefact
+`andika-debug-apk`, l'installer sur un téléphone Android 8+ en 64 bits, télécharger le modèle
+`tiny` (Wi-Fi), transcrire 1 minute, puis `base` ; noter les résultats dans `docs/MESURES.md`.
 
 ## Ce que l'environnement de développement autonome permettait
 

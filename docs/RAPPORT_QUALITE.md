@@ -10,16 +10,17 @@
 | --- | --- | --- |
 | Couche native C++ (whisper.cpp, interface `andika_*`) compilée sur ordinateur, 28 vérifications : en-têtes de modèle, SHA-1, annulation et sa remise à zéro, erreurs, silence | 28 / 28 réussies | `cmake -S native_tests -B build && cmake --build build && build/test_andika` |
 | Calcul du taux d'erreurs (WER) | réussi | `python3 tools/test_wer.py` |
-| Syntaxe de tous les fichiers Dart et Kotlin (analyse tree-sitter) | 0 erreur sur 53 fichiers | `python3 tools/check_syntax.py lib test android tools` |
+| Syntaxe de tous les fichiers Dart et Kotlin (analyse tree-sitter) | 0 erreur | `python3 tools/check_syntax.py lib test android tools` |
+| `flutter analyze`, `flutter test`, `flutter build apk --debug` (CI GitHub, Flutter 3.50.0) | analyse propre, 71 tests réussis, APK construit | onglet Actions du dépôt |
 | Cohérence entre fichiers : imports Dart, méthodes du canal Dart ↔ Kotlin (dans les deux sens), classes et ressources du manifeste, clés de texte FR/EN | aucun problème | `python3 tools/check_consistency.py` |
 | Algorithmes rejoués en Python : découpage aux silences, recherche sans accent | valeurs attendues des tests Dart ; 2 défauts trouvés et corrigés (L7) | voir JOURNAL.md |
 
 ## 2. Ce qui n'a PAS été exécuté
 
-- Aucune compilation Dart, Kotlin ni Gradle : pas de SDK Flutter, Dart ni Android ici.
-  `flutter analyze` n'a jamais tourné. **Des erreurs de type ou d'API sont probables** ;
-  ce sont les premières à corriger (le CI les montrera).
-- Aucun des tests Dart (`test/*.dart`, 11 fichiers) n'a été exécuté.
+- Pas de SDK Flutter, Dart ni Android dans l'environnement de développement ; c'est le CI
+  GitHub qui compile. Dernière exécution : analyse sans alerte, 71 tests Dart réussis, APK de
+  débogage construit (Kotlin et CMake/NDK compris). Cela prouve que le code compile, **pas
+  qu'il fonctionne sur un téléphone**.
 - Aucune transcription réelle : modèle Whisper non téléchargeable depuis l'environnement
   (Hugging Face bloqué). La couche native a été testée avec un modèle factice.
 - Aucune mesure de vitesse, de mémoire, de chauffe ni de batterie (`docs/MESURES.md` est vide).
@@ -50,7 +51,7 @@
 
 ## 5. Défauts connus ou à surveiller
 
-1. Première compilation : attendre des erreurs de type, d'import ou d'API Flutter.
+1. Le code compile (CI), mais l'exécution réelle sur téléphone n'a jamais eu lieu : premiers plantages possibles (chargement du modèle, service d'avant-plan, MediaCodec selon les appareils).
 2. `DropdownButtonFormField.value` : obsolète selon la version de Flutter (avertissement ignoré).
 3. « Appliquer le dictionnaire » efface les corrections manuelles du texte.
 4. Variantes `q5_1` : vérifiées seulement par en-tête et taille, sans SHA-1.
@@ -61,8 +62,6 @@
 
 ## 6. Ordre conseillé au premier jour sur machine avec SDK
 
-1. `flutter pub get && flutter analyze` — corriger les erreurs.
-2. `flutter test` — corriger ou ajuster les tests.
-3. `flutter build apk --debug` — corriger Gradle/CMake (NDK, `GGML_*`, page 16 Ko).
-4. Installer sur un téléphone, télécharger `tiny`, transcrire 1 minute.
-5. Passer à `base`, jeu d'essai complet, remplir `MESURES.md`, valider C1 à C6.
+1. Télécharger l'APK de débogage produit par le CI (artefact `andika-debug-apk`).
+2. Installer sur un téléphone, télécharger `tiny`, transcrire 1 minute.
+3. Passer à `base`, jeu d'essai complet, remplir `MESURES.md`, valider C1 à C6.
