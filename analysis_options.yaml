@@ -1,6 +1,8 @@
 analyzer:
   errors:
     todo: ignore
+    # DropdownButtonFormField.value est signalé obsolète sur les Flutter récents mais reste valable.
+    deprecated_member_use: ignore
   exclude:
     - build/**
     - android/**
