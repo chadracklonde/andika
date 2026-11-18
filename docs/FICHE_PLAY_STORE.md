@@ -51,7 +51,9 @@ Productivité (ou Outils).
 | INTERNET | Télécharger les modèles à la demande de l'utilisateur |
 | POST_NOTIFICATIONS | Notification de progression pendant une transcription |
 | FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC | Transcription longue lancée par l'utilisateur ; la déclaration « type de service d'avant-plan » de Play Console demande une courte vidéo de démonstration |
-| WAKE_LOCK | Garder le processeur actif écran éteint pendant la transcription |
+| WAKE_LOCK | Garder le processeur actif écran éteint pendant la transcription et l'enregistrement |
+| RECORD_AUDIO | Dictaphone intégré, lancé par l'utilisateur ; demandée à l'exécution, au premier enregistrement. L'application reste utilisable sans (import de fichiers) |
+| FOREGROUND_SERVICE_MICROPHONE | Enregistrement écran éteint, avec notification visible ; la déclaration « type de service d'avant-plan » demande une courte vidéo montrant l'enregistrement avec sa notification |
 
 ## Captures d'écran à prévoir (au moins 2, idéalement 4 à 8)
 

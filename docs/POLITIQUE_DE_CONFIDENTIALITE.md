@@ -9,7 +9,7 @@ textes ne quittent jamais l'appareil.
 
 ## Ce qui est enregistré sur votre téléphone
 
-- Les transcriptions (texte et heures), le son de travail converti à partir de vos fichiers,
+- Les transcriptions (texte et heures), les enregistrements faits avec le dictaphone, le son de travail converti à partir de vos fichiers,
   vos réglages et votre dictionnaire de remplacement.
 - Ces données se trouvent dans l'espace privé de l'application. Elles sont supprimées si vous
   les supprimez dans l'application ou si vous désinstallez Andika.
@@ -36,9 +36,16 @@ partage de données avec des tiers, pas de service d'analyse de plantages.
 | Internet | Télécharger les modèles |
 | Notifications | Afficher la progression d'une longue transcription |
 | Service d'avant-plan (synchronisation de données) et verrou de veille | Continuer la transcription écran éteint |
+| Micro (RECORD_AUDIO) | Enregistrer avec le dictaphone d'Andika. Demandée au premier enregistrement seulement ; l'application fonctionne sans, par import de fichiers |
+| Service d'avant-plan (micro) | Continuer un enregistrement écran éteint, avec une notification visible tant que le micro est actif |
 
 Andika n'a pas accès à tout votre stockage : vous choisissez chaque fichier avec le
-sélecteur d'Android, ou vous le partagez vers l'application.
+sélecteur d'Android, ou vous le partagez vers l'application. De même, « Enregistrer sous… »
+utilise le sélecteur d'Android : vous choisissez le dossier, Andika n'y accède pas ensuite.
+
+Les enregistrements du dictaphone restent dans l'espace privé de l'application, sur votre
+appareil. Ils ne sont ni envoyés ni copiés ailleurs tant que vous ne les partagez pas ou ne
+les enregistrez pas vous-même sous un autre emplacement.
 
 ## Partage volontaire
 
