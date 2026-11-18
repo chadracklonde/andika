@@ -45,3 +45,13 @@ String formatShortDate(DateTime utc) {
   String p(int v) => v.toString().padLeft(2, '0');
   return '${p(d.day)}/${p(d.month)} ${p(d.hour)}:${p(d.minute)}';
 }
+
+/// Chronomètre précis « mm:ss,cc » (minutes, secondes, centièmes), comme sur un dictaphone.
+String formatPrecise(int ms) {
+  if (ms < 0) ms = 0;
+  String p(int v) => v.toString().padLeft(2, '0');
+  final m = ms ~/ 60000;
+  final sec = (ms % 60000) ~/ 1000;
+  final cs = (ms % 1000) ~/ 10;
+  return '${p(m)}:${p(sec)},${p(cs)}';
+}

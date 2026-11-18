@@ -1,14 +1,19 @@
-import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
 import '../export/exporters.dart';
 import '../recorder/recorder_controller.dart';
+import '../recorder/recording.dart';
 import 'common.dart';
 import 'recordings_screen.dart';
+import 'waveform.dart';
 
-/// Dictaphone : enregistrer, mettre en pause, arrêter.
+const Color _recRed = Color(0xFFE8473F);
+const Color _doneBlue = Color(0xFF3B82F6);
+
+/// Dictaphone : onde défilante, chronomètre, un grand bouton rouge, ✓ pour terminer.
 class RecorderScreen extends StatelessWidget {
   const RecorderScreen({super.key, required this.controller, this.fromLibrary = false});
 
@@ -38,6 +43,16 @@ class RecorderScreen extends StatelessWidget {
     }
   }
 
+  void _openLibrary(BuildContext context) {
+    if (fromLibrary) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => RecordingsScreen(controller: c),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -45,92 +60,203 @@ class RecorderScreen extends StatelessWidget {
       builder: (context, _) {
         final s = c.strings;
         final r = c.recorder;
-        final status = switch (r.state) {
+        final theme = Theme.of(context);
+        final subtitle = switch (r.state) {
           RecState.idle => s.t('rec_idle'),
-          RecState.recording => s.t('rec_recording'),
-          RecState.paused => s.t('rec_paused'),
+          RecState.recording => clockTime(r.elapsedMs),
+          RecState.paused => '${clockTime(r.elapsedMs)} · ${s.t('rec_paused')}',
+        };
+        final mainLabel = switch (r.state) {
+          RecState.idle => s.t('rec_start'),
+          RecState.recording => s.t('pause'),
+          RecState.paused => s.t('resume'),
         };
         return Scaffold(
           appBar: AppBar(
-            title: Text(s.t('recorder')),
+            backgroundColor: Colors.transparent,
+            scrolledUnderElevation: 0,
             actions: <Widget>[
-              IconButton(
-                tooltip: s.t('recordings'),
-                icon: const Icon(Icons.library_music_outlined),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => RecordingsScreen(controller: c),
-                )),
+              PopupMenuButton<String>(
+                tooltip: s.t('menu'),
+                icon: const _RoundIcon(icon: Icons.more_horiz),
+                onSelected: (_) => _openLibrary(context),
+                itemBuilder: (_) => <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(value: 'library', child: Text(s.t('recordings'))),
+                ],
               ),
-            ],
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Semantics(
-                  liveRegion: true,
-                  child: Text(status, style: Theme.of(context).textTheme.titleMedium),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  clockTime(r.elapsedMs),
-                  style: Theme.of(context).textTheme.displayMedium,
-                ),
-                const SizedBox(height: 24),
-                Semantics(
-                  label: s.t('rec_level'),
-                  child: LinearProgressIndicator(
-                    // Racine carrée : la voix normale reste bien visible.
-                    value: math.sqrt(r.level),
-                    minHeight: 10,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                if (r.errorKey != null)
-                  Card(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    child: ListTile(
-                      leading: const Icon(Icons.error_outline),
-                      title: Text(s.t(r.errorKey!)),
-                      trailing: IconButton(
-                        tooltip: s.t('close'),
-                        icon: const Icon(Icons.close),
-                        onPressed: r.dismissError,
+              Padding(
+                padding: const EdgeInsets.only(right: 12, left: 4),
+                child: Opacity(
+                  opacity: r.active ? 1 : 0.35,
+                  child: Tooltip(
+                    message: s.t('rec_stop'),
+                    child: InkResponse(
+                      onTap: r.active ? () => _stop(context) : null,
+                      radius: 28,
+                      child: const CircleAvatar(
+                        radius: 22,
+                        backgroundColor: _doneBlue,
+                        child: Icon(Icons.check, color: Colors.white, size: 28),
                       ),
                     ),
                   ),
-                const SizedBox(height: 16),
-                if (!r.active)
-                  FilledButton.icon(
-                    onPressed: () => r.start(),
-                    icon: const Icon(Icons.mic),
-                    label: Text(s.t('rec_start')),
-                    style: FilledButton.styleFrom(minimumSize: const Size(220, 64)),
-                  )
-                else ...<Widget>[
-                  FilledButton.icon(
-                    onPressed: () => _stop(context),
-                    icon: const Icon(Icons.stop),
-                    label: Text(s.t('rec_stop')),
-                    style: FilledButton.styleFrom(minimumSize: const Size(220, 64)),
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            top: false,
+            child: Column(
+              children: <Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  r.currentTitle ?? s.t('recorder'),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    subtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: r.state == RecState.recording ? r.pause : r.resume,
-                    icon: Icon(r.state == RecState.recording ? Icons.pause : Icons.play_arrow),
-                    label: Text(r.state == RecState.recording ? s.t('pause') : s.t('resume')),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(220, 48)),
+                ),
+                const SizedBox(height: 28),
+                Semantics(
+                  label: s.t('rec_level'),
+                  child: RecordingWaveform(
+                    levels: r.levels,
+                    levelsOffset: r.levelsOffset,
+                    elapsedMs: r.elapsedMs,
+                    bucketMs: RecorderController.levelBucketMs,
                   ),
-                ],
-                const SizedBox(height: 32),
-                Text(s.t('rec_tip'), textAlign: TextAlign.center),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  formatPrecise(r.elapsedMs),
+                  style: const TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (r.errorKey != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Card(
+                      color: theme.colorScheme.errorContainer,
+                      child: ListTile(
+                        leading: const Icon(Icons.error_outline),
+                        title: Text(s.t(r.errorKey!)),
+                        trailing: IconButton(
+                          tooltip: s.t('close'),
+                          icon: const Icon(Icons.close),
+                          onPressed: r.dismissError,
+                        ),
+                      ),
+                    ),
+                  ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Row(
+                    children: <Widget>[
+                      Tooltip(
+                        message: s.t('recordings'),
+                        child: InkResponse(
+                          onTap: () => _openLibrary(context),
+                          radius: 32,
+                          child: const _RoundIcon(icon: Icons.format_list_bulleted, size: 52),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Semantics(
+                          button: true,
+                          label: mainLabel,
+                          child: GestureDetector(
+                            onTap: () {
+                              switch (r.state) {
+                                case RecState.idle:
+                                  r.start();
+                                case RecState.recording:
+                                  r.pause();
+                                case RecState.paused:
+                                  r.resume();
+                              }
+                            },
+                            child: Container(
+                              height: 76,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(38),
+                              ),
+                              alignment: Alignment.center,
+                              child: r.state == RecState.recording
+                                  ? const _PauseGlyph()
+                                  : const _RecordGlyph(),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const SizedBox(width: 52),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         );
       },
     );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  const _RoundIcon({required this.icon, this.size = 44});
+
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+      child: Icon(icon, size: size * 0.5),
+    );
+  }
+}
+
+class _RecordGlyph extends StatelessWidget {
+  const _RecordGlyph();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 52,
+        height: 52,
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: _recRed),
+      );
+}
+
+class _PauseGlyph extends StatelessWidget {
+  const _PauseGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar() => Container(
+          width: 12,
+          height: 38,
+          decoration: BoxDecoration(color: _recRed, borderRadius: BorderRadius.circular(3)),
+        );
+    return Row(mainAxisSize: MainAxisSize.min, children: <Widget>[bar(), const SizedBox(width: 10), bar()]);
   }
 }

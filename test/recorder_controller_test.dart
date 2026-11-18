@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:andika/audio/wav_file.dart';
 import 'package:andika/platform/platform_bridge.dart';
 import 'package:andika/recorder/recorder_controller.dart';
+import 'package:andika/recorder/recording.dart';
 import 'package:andika/recorder/recording_store.dart';
 
 const MethodChannel channel = MethodChannel('org.chadracklonde.andika/platform');
@@ -151,5 +152,29 @@ void main() {
     expect(await rec.stop(), isNull);
     expect(store.list(), isEmpty);
     expect(File(lastPath!).existsSync(), isFalse);
+  });
+
+  test('historique du niveau : le plus fort de chaque tranche de 100 ms', () async {
+    await rec.start();
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 30, 'level': 0.2});
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 80, 'level': 0.5});
+    await sendEvent(<String, Object?>{'state': 'recording', 'elapsedMs': 350, 'level': 0.3});
+    expect(rec.levelsOffset, 0);
+    expect(rec.levels, <double>[0.5, 0, 0, 0.3]);
+    // En pause, rien n'est ajouté.
+    await sendEvent(<String, Object?>{'state': 'paused', 'elapsedMs': 400, 'level': 0.0});
+    expect(rec.levels, hasLength(4));
+    // Un nouvel enregistrement repart de zéro et porte un titre.
+    await rec.stop();
+    await rec.start();
+    expect(rec.levels, isEmpty);
+    expect(rec.currentTitle, 'Enregistrement');
+  });
+
+  test('chronomètre précis mm:ss,cc', () {
+    expect(formatPrecise(0), '00:00,00');
+    expect(formatPrecise(21234), '00:21,23');
+    expect(formatPrecise(125990), '02:05,99');
+    expect(formatPrecise(-5), '00:00,00');
   });
 }

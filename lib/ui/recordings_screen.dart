@@ -27,6 +27,7 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
   StreamSubscription<PlayerState>? _sub;
   PlayerState _state = const PlayerState();
   String? _playingId;
+  String? _openId;
 
   @override
   void initState() {
@@ -140,6 +141,16 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
     ));
   }
 
+  /// Déplie ou replie une ligne ; replier arrête la lecture de cette ligne.
+  Future<void> _toggleOpen(Recording rec) async {
+    if (_openId == rec.id) {
+      if (_playingId == rec.id && _state.playing) await _player?.pause();
+      if (mounted) setState(() => _openId = null);
+    } else {
+      setState(() => _openId = rec.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -147,34 +158,62 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
       builder: (context, _) {
         final s = c.strings;
         final list = c.recordings;
+        final theme = Theme.of(context);
         final used = formatBytes(c.recordingStore.totalBytes(), mb: s.t('unit_mb'), gb: s.t('unit_gb'));
         return Scaffold(
-          appBar: AppBar(title: Text(s.t('recordings'))),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => RecorderScreen(controller: c, fromLibrary: true),
-            )),
-            icon: const Icon(Icons.mic),
-            label: Text(s.t('rec_open_recorder')),
-          ),
-          body: list.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(s.t('rec_empty'),
-                        textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+          appBar: AppBar(backgroundColor: Colors.transparent, scrolledUnderElevation: 0),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: Tooltip(
+            message: s.t('rec_open_recorder'),
+            child: Material(
+              shape: const CircleBorder(),
+              elevation: 4,
+              color: theme.colorScheme.surface,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => RecorderScreen(controller: c, fromLibrary: true),
+                )),
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE8473F)),
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text(s.t('rec_space_used', {'size': used})),
-                    ),
-                    for (final rec in list) _tile(context, rec),
-                  ],
                 ),
+              ),
+            ),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.only(bottom: 120),
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                child: Text(
+                  s.t('recordings'),
+                  style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (list.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    s.t('rec_space_used', {'size': used}),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              const Divider(height: 1),
+              if (list.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(s.t('rec_empty'),
+                      textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
+                )
+              else
+                for (final rec in list) _tile(context, rec),
+            ],
+          ),
         );
       },
     );
@@ -182,56 +221,99 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
 
   Widget _tile(BuildContext context, Recording rec) {
     final s = c.strings;
+    final theme = Theme.of(context);
+    final open = _openId == rec.id;
     final playing = _playingId == rec.id;
     final isPlaying = playing && _state.playing;
     final duration = _state.durationMs <= 0 ? 1 : _state.durationMs;
-    final size = formatBytes(rec.sizeBytes, mb: s.t('unit_mb'), gb: s.t('unit_gb'));
+    final muted = theme.colorScheme.onSurfaceVariant;
     return Column(
       children: <Widget>[
-        ListTile(
-          leading: IconButton(
-            tooltip: isPlaying ? s.t('pause') : s.t('rec_play'),
-            icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle, size: 36),
-            onPressed: () => _togglePlay(rec),
-          ),
-          title: Text(rec.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${formatDate(rec.createdAt)} · ${formatDuration(rec.durationMs)} · $size'),
-          trailing: PopupMenuButton<String>(
-            tooltip: s.t('menu'),
-            onSelected: (v) {
-              switch (v) {
-                case 'transcribe':
-                  _transcribe(rec);
-                case 'share':
-                  unawaited(_share(rec));
-                case 'save_as':
-                  unawaited(_saveAs(rec));
-                case 'rename':
-                  unawaited(_rename(rec));
-                case 'delete':
-                  unawaited(_delete(rec));
-              }
-            },
-            itemBuilder: (_) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(value: 'transcribe', child: Text(s.t('rec_transcribe'))),
-              PopupMenuItem<String>(value: 'share', child: Text(s.t('share_audio'))),
-              PopupMenuItem<String>(value: 'save_as', child: Text(s.t('save_audio_as'))),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(value: 'rename', child: Text(s.t('rename'))),
-              PopupMenuItem<String>(value: 'delete', child: Text(s.t('delete'))),
-            ],
-          ),
-          onTap: () => _transcribe(rec),
-        ),
-        if (playing)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Slider(
-              value: _state.positionMs.clamp(0, duration).toDouble(),
-              max: duration.toDouble(),
-              onChanged: (v) => _player?.seek(v.round()),
+        InkWell(
+          onTap: () => _toggleOpen(rec),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        rec.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(formatDate(rec.createdAt), style: theme.textTheme.bodyMedium?.copyWith(color: muted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(formatDuration(rec.durationMs), style: theme.textTheme.bodyMedium?.copyWith(color: muted)),
+              ],
             ),
           ),
+        ),
+        if (open)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Column(
+              children: <Widget>[
+                if (playing)
+                  Slider(
+                    value: _state.positionMs.clamp(0, duration).toDouble(),
+                    max: duration.toDouble(),
+                    onChanged: (v) => _player?.seek(v.round()),
+                  ),
+                Row(
+                  children: <Widget>[
+                    IconButton(
+                      tooltip: isPlaying ? s.t('pause') : s.t('rec_play'),
+                      iconSize: 44,
+                      icon: Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill),
+                      onPressed: () => _togglePlay(rec),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: s.t('share_audio'),
+                      icon: const Icon(Icons.ios_share),
+                      onPressed: () => unawaited(_share(rec)),
+                    ),
+                    IconButton(
+                      tooltip: s.t('save_audio_as'),
+                      icon: const Icon(Icons.save_alt),
+                      onPressed: () => unawaited(_saveAs(rec)),
+                    ),
+                    IconButton(
+                      tooltip: s.t('rename'),
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => unawaited(_rename(rec)),
+                    ),
+                    IconButton(
+                      tooltip: s.t('delete'),
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => unawaited(_delete(rec)),
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _transcribe(rec),
+                      icon: const Icon(Icons.subtitles_outlined),
+                      label: Text(s.t('rec_transcribe')),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const Divider(height: 1, indent: 20),
       ],
     );
   }

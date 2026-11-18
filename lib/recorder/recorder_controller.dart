@@ -40,6 +40,18 @@ class RecorderController extends ChangeNotifier {
   /// Niveau sonore de 0 à 1.
   double level = 0;
 
+  /// Durée couverte par une valeur de [levels].
+  static const int levelBucketMs = 100;
+  static const int _maxLevels = 6000;
+
+  /// Historique du niveau (le plus fort de chaque tranche de 100 ms), pour dessiner l'onde.
+  /// L'indice 0 correspond à la tranche [levelsOffset].
+  final List<double> levels = <double>[];
+  int levelsOffset = 0;
+
+  /// Titre que portera l'enregistrement en cours.
+  String? currentTitle;
+
   /// Clé de texte de l'erreur à afficher, ou null.
   String? errorKey;
 
@@ -113,6 +125,9 @@ class RecorderController extends ChangeNotifier {
       state = RecState.recording;
       elapsedMs = 0;
       level = 0;
+      levels.clear();
+      levelsOffset = 0;
+      currentTitle = defaultTitle(DateTime.now().toUtc());
       notifyListeners();
       return true;
     } on PlatformFailure catch (e) {
@@ -161,6 +176,8 @@ class RecorderController extends ChangeNotifier {
     state = RecState.idle;
     level = 0;
     _currentId = null;
+    final title = currentTitle;
+    currentTitle = null;
     if (id == null) {
       notifyListeners();
       return null;
@@ -177,7 +194,7 @@ class RecorderController extends ChangeNotifier {
     final created = DateTime.now().toUtc();
     final rec = Recording(
       id: id,
-      title: defaultTitle(created),
+      title: title ?? defaultTitle(created),
       createdAt: created,
       durationMs: repaired,
       sizeBytes: File(path).lengthSync(),
@@ -207,7 +224,24 @@ class RecorderController extends ChangeNotifier {
     elapsedMs = elapsed;
     level = ((data['level'] as num?)?.toDouble() ?? 0).clamp(0.0, 1.0);
     state = name == 'paused' ? RecState.paused : RecState.recording;
+    if (name != 'paused') _addLevel(elapsed, level);
     notifyListeners();
+  }
+
+  void _addLevel(int elapsed, double value) {
+    final bucket = elapsed ~/ levelBucketMs;
+    // Reprise d'un enregistrement déjà en cours : l'historique commence ici.
+    if (levels.isEmpty) levelsOffset = bucket;
+    final i = bucket - levelsOffset;
+    if (i < 0) return;
+    while (levels.length <= i) {
+      levels.add(0);
+    }
+    if (value > levels[i]) levels[i] = value;
+    if (levels.length > _maxLevels) {
+      levels.removeRange(0, 1000);
+      levelsOffset += 1000;
+    }
   }
 
   static String _errorKeyFor(String code) {
