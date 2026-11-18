@@ -27,11 +27,13 @@ class PlatformBridge(
     companion object {
         const val CHANNEL = "org.chadracklonde.andika/platform"
         const val REQ_PICK = 4201
+        const val REQ_NOTIF = 4202
     }
 
     private val channel = MethodChannel(messenger, CHANNEL)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPick: MethodChannel.Result? = null
+    private var pendingNotif: MethodChannel.Result? = null
     private var decoder: AudioDecoder? = null
     private var shareConsumed = false
 
@@ -104,6 +106,24 @@ class PlatformBridge(
                 ),
             )
             "decodeToWav" -> decodeToWav(call, result)
+            "startForeground" -> {
+                val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
+                TranscriptionService.start(
+                    activity,
+                    (args["title"] as? String) ?: "Andika",
+                    (args["text"] as? String) ?: "",
+                    (args["progress"] as? Number)?.toInt() ?: -1,
+                    (args["channelName"] as? String) ?: "Transcription",
+                )
+                result.success(null)
+            }
+            "stopForeground" -> {
+                TranscriptionService.stop(activity)
+                result.success(null)
+            }
+            "notificationsAllowed" -> result.success(notificationsAllowed())
+            "requestNotifications" -> requestNotifications(result)
+            "getBatteryInfo" -> result.success(batteryInfo())
             "cancelDecode" -> {
                 decoder?.cancelled = true
                 result.success(null)
@@ -148,6 +168,50 @@ class PlatformBridge(
     fun onNewIntent(intent: Intent) {
         val uri = sharedUri(intent) ?: return
         emit("shared", describe(uri))
+    }
+
+    private fun notificationsAllowed(): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return true
+        return activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestNotifications(result: MethodChannel.Result) {
+        if (notificationsAllowed()) {
+            result.success(true)
+            return
+        }
+        if (pendingNotif != null) {
+            result.error("busy", "Une demande est déjà en cours", null)
+            return
+        }
+        pendingNotif = result
+        activity.requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
+    }
+
+    /** Retourne vrai si le résultat concernait ce pont. */
+    fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray): Boolean {
+        if (requestCode != REQ_NOTIF) return false
+        val result = pendingNotif ?: return true
+        pendingNotif = null
+        result.success(grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
+        return true
+    }
+
+    private fun batteryInfo(): Map<String, Any?> {
+        val bm = activity.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
+        val pm = activity.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val level = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        val status = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
+        val charging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == android.os.BatteryManager.BATTERY_STATUS_FULL
+        return mapOf(
+            "level" to level,
+            "charging" to charging,
+            "powerSave" to pm.isPowerSaveMode,
+            "ignoringOptimizations" to pm.isIgnoringBatteryOptimizations(activity.packageName),
+        )
     }
 
     private fun deviceInfo(): Map<String, Any?> {

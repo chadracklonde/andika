@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Téléchargement des modèles Whisper (seule utilisation d'Internet). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Transcription longue écran éteint : service d'avant-plan, notification, verrou processeur. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:label="Andika"
@@ -39,6 +44,10 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".TranscriptionService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

@@ -53,6 +53,29 @@ class DeviceInfo {
 }
 
 /// Dossiers privés de l'application.
+/// État de la batterie (voir getBatteryInfo côté Kotlin).
+class BatteryInfo {
+  const BatteryInfo({
+    required this.level,
+    required this.charging,
+    required this.powerSave,
+    required this.ignoringOptimizations,
+  });
+
+  factory BatteryInfo.fromMap(Map<Object?, Object?> map) => BatteryInfo(
+        level: (map['level'] as num?)?.toInt() ?? -1,
+        charging: map['charging'] as bool? ?? false,
+        powerSave: map['powerSave'] as bool? ?? false,
+        ignoringOptimizations: map['ignoringOptimizations'] as bool? ?? false,
+      );
+
+  /// Niveau en pourcentage, -1 si inconnu.
+  final int level;
+  final bool charging;
+  final bool powerSave;
+  final bool ignoringOptimizations;
+}
+
 class AppPaths {
   const AppPaths({required this.files, required this.cache});
 
@@ -185,6 +208,42 @@ class PlatformBridge {
 
   Future<void> cancelDecode() {
     return _guard<void>(() => _channel.invokeMethod<void>('cancelDecode'));
+  }
+
+  /// Démarre (ou met à jour) le service d'avant-plan et sa notification.
+  /// [progress] : 0 à 100, ou -1 si indéterminé.
+  Future<void> startForeground({
+    required String title,
+    required String text,
+    required int progress,
+    required String channelName,
+  }) {
+    return _guard<void>(() => _channel.invokeMethod<void>('startForeground', <String, Object?>{
+          'title': title,
+          'text': text,
+          'progress': progress,
+          'channelName': channelName,
+        }));
+  }
+
+  Future<void> stopForeground() {
+    return _guard<void>(() => _channel.invokeMethod<void>('stopForeground'));
+  }
+
+  Future<bool> notificationsAllowed() {
+    return _guard<bool>(() async => await _channel.invokeMethod<bool>('notificationsAllowed') ?? false);
+  }
+
+  /// Affiche la demande d'autorisation (Android 13 et plus). Retourne le résultat.
+  Future<bool> requestNotifications() {
+    return _guard<bool>(() async => await _channel.invokeMethod<bool>('requestNotifications') ?? false);
+  }
+
+  Future<BatteryInfo> getBatteryInfo() {
+    return _guard<BatteryInfo>(() async {
+      final map = await _channel.invokeMethod<Map<Object?, Object?>>('getBatteryInfo');
+      return BatteryInfo.fromMap(map ?? <Object?, Object?>{});
+    });
   }
 
   /// Appel générique pour les fonctions ajoutées par les lots suivants.
