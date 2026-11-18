@@ -19,6 +19,8 @@ jobs:
           ctest --test-dir build-native --output-on-failure
       - name: Tests Python
         run: python3 tools/test_wer.py
+      - name: Cohérence entre fichiers
+        run: python3 tools/check_consistency.py
 
   flutter:
     name: Analyse, tests et APK de débogage
