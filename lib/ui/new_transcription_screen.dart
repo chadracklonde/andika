@@ -43,6 +43,17 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
     }
   }
 
+  /// Garde un modèle choisi qui existe vraiment : après un premier téléchargement,
+  /// le modèle par défaut (non installé) n'est plus dans la liste proposée.
+  void _syncModel() {
+    final installed = c.models.installedModels();
+    if (installed.isNotEmpty && !installed.any((m) => m.id == modelId)) {
+      modelId = installed.contains(modelById(c.settings.modelId))
+          ? c.settings.modelId
+          : installed.first.id;
+    }
+  }
+
   Future<void> _pick() async {
     final picked = await c.pickAudio();
     if (picked != null && mounted) setState(() => file = picked);
@@ -106,6 +117,7 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final s = c.strings;
+    _syncModel();
     final installed = c.models.installedModels();
     final model = modelById(modelId);
     final fit = model == null ? ModelFit.good : modelFit(model, c.totalRamBytes);
