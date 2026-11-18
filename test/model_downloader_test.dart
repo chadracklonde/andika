@@ -106,7 +106,7 @@ void main() {
   test('espace insuffisant', () async {
     final server = await serve(List<int>.filled(1000, 1));
     final dl = ModelDownloader(store: store, clientFactory: clientFor(server), verifier: okVerifier);
-    expect(
+    await expectLater(
       dl.download(model, freeStorageBytes: () async => 10).toList(),
       throwsA(isA<ModelException>().having((e) => e.code, 'code', 'no_space')),
     );

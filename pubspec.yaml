@@ -12,6 +12,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Fournie avec le SDK Flutter (pas un paquet externe) : textes système en français.
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

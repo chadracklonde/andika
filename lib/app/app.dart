@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../ui/home_screen.dart';
 import 'controller.dart';
@@ -17,11 +18,14 @@ class AndikaApp extends StatefulWidget {
 class _AndikaAppState extends State<AndikaApp> {
   final AppController controller = AppController();
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  Object? _initError;
 
   @override
   void initState() {
     super.initState();
-    unawaited(controller.init());
+    unawaited(controller.init().catchError((Object e) {
+      if (mounted) setState(() => _initError = e);
+    }));
   }
 
   @override
@@ -43,8 +47,9 @@ class _AndikaAppState extends State<AndikaApp> {
           locale: Locale(lang),
           supportedLocales: const <Locale>[Locale('fr'), Locale('en')],
           localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-            DefaultMaterialLocalizations.delegate,
-            DefaultWidgetsLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
           theme: ThemeData(
             useMaterial3: true,
@@ -58,7 +63,24 @@ class _AndikaAppState extends State<AndikaApp> {
           ),
           home: controller.ready
               ? HomeScreen(controller: controller)
-              : const Scaffold(body: Center(child: CircularProgressIndicator())),
+              : Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Text('Andika', style: TextStyle(fontSize: 28)),
+                        const SizedBox(height: 16),
+                        if (_initError == null)
+                          const CircularProgressIndicator()
+                        else
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text('$_initError', textAlign: TextAlign.center),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
         );
       },
     );

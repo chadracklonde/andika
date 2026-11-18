@@ -14,7 +14,7 @@ Ces décisions ont été prises pendant le développement autonome de la nuit du
 
 ## Choix techniques
 
-- **Aucune dépendance Dart externe.** Le fichier `pubspec.yaml` ne contient que Flutter. Je n'ai pas pu vérifier les versions des paquets ni leurs interfaces (pub.dev inaccessible depuis mon environnement), et un paquet qui change d'interface casserait la compilation. Les fonctions Android passent par du code Kotlin écrit pour ce projet.
+- **Aucune dépendance Dart externe.** Le fichier `pubspec.yaml` ne contient que Flutter et `flutter_localizations` (fourni avec le SDK, indispensable aux textes système en français). Je n'ai pas pu vérifier les versions des paquets ni leurs interfaces (pub.dev inaccessible depuis mon environnement), et un paquet qui change d'interface casserait la compilation. Les fonctions Android passent par du code Kotlin écrit pour ce projet.
 - **Stockage en fichiers JSON** (historique, segments, dictionnaire) à la place de SQLite/drift. Le volume est faible, et cela évite un paquet. On pourra migrer vers SQLite si l'historique devient très grand.
 - **Moteur :** whisper.cpp version 1.9.5, ajouté comme sous-module Git (`third_party/whisper.cpp`), compilé par CMake avec le NDK et appelé par `dart:ffi` via une petite couche C (`android/app/src/main/cpp/andika_whisper.cpp`).
 - **Modèle par défaut : `base` non quantifié** (142 Mo environ). Sa somme de contrôle SHA-1 est publiée par le projet whisper.cpp, donc le téléchargement est vérifiable. Les versions quantifiées q5_1 sont proposées comme options plus légères, mais leur somme de contrôle n'est pas publiée : elles sont seulement contrôlées par leur en-tête et leur taille.
