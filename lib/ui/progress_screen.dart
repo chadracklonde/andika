@@ -43,6 +43,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
     super.initState();
     _trackedJobId = c.active?.jobId;
     c.addListener(_onChange);
+    if (c.active == null) {
+      // Rien à suivre (par exemple lancement refusé) : on revient en arrière.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_left) {
+          _left = true;
+          Navigator.of(context).pop();
+        }
+      });
+    }
   }
 
   @override
