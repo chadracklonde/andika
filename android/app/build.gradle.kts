@@ -58,3 +58,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider (partage des exports). Déjà tirée par Flutter, déclarée ici pour être explicite.
+    implementation("androidx.core:core:1.13.1")
+}

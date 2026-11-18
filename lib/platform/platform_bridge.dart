@@ -230,6 +230,12 @@ class PlatformBridge {
     return _guard<void>(() => _channel.invokeMethod<void>('stopForeground'));
   }
 
+  /// Ouvre le menu de partage Android pour un fichier du dossier cache/exports.
+  Future<void> shareFile({required String path, required String mime, required String title}) {
+    return _guard<void>(() => _channel.invokeMethod<void>(
+        'shareFile', <String, Object?>{'path': path, 'mime': mime, 'title': title}));
+  }
+
   Future<bool> notificationsAllowed() {
     return _guard<bool>(() async => await _channel.invokeMethod<bool>('notificationsAllowed') ?? false);
   }

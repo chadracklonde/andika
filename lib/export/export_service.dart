@@ -1,0 +1,49 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+
+import '../platform/platform_bridge.dart';
+import '../transcription/transcript.dart';
+import 'exporters.dart';
+
+/// Copie, enregistre et partage une transcription.
+class ExportService {
+  ExportService({required this.cacheDir, PlatformBridge? bridge})
+      : _bridge = bridge ?? PlatformBridge.instance;
+
+  /// Dossier cache de l'application (voir `getPaths`).
+  final String cacheDir;
+  final PlatformBridge _bridge;
+
+  Future<void> copyText(List<Segment> segments, {bool timestamps = false}) {
+    return Clipboard.setData(ClipboardData(text: toPlainText(segments, timestamps: timestamps)));
+  }
+
+  /// Écrit le fichier d'export dans cache/exports et retourne son chemin.
+  File writeExport(
+    List<Segment> segments,
+    ExportFormat format, {
+    required String title,
+    bool timestamps = false,
+  }) {
+    final dir = Directory('$cacheDir/exports')..createSync(recursive: true);
+    // Un seul export à la fois : on évite d'accumuler des fichiers.
+    for (final e in dir.listSync()) {
+      if (e is File) e.deleteSync();
+    }
+    final file = File('${dir.path}/${safeFileName(title)}.${exportExtension(format)}');
+    file.writeAsStringSync(exportContent(segments, format, timestamps: timestamps), flush: true);
+    return file;
+  }
+
+  Future<void> share(
+    List<Segment> segments,
+    ExportFormat format, {
+    required String title,
+    required String chooserTitle,
+    bool timestamps = false,
+  }) {
+    final file = writeExport(segments, format, title: title, timestamps: timestamps);
+    return _bridge.shareFile(path: file.path, mime: exportMime(format), title: chooserTitle);
+  }
+}

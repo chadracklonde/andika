@@ -143,6 +143,18 @@ class PlatformBridge(
                 result.success(null)
             }
             "playerRelease" -> { audioPlayer.release(); result.success(null) }
+            "shareFile" -> {
+                try {
+                    shareFile(
+                        call.argument<String>("path") ?: throw IllegalArgumentException("path"),
+                        call.argument<String>("mime") ?: "text/plain",
+                        call.argument<String>("title") ?: "",
+                    )
+                    result.success(null)
+                } catch (e: Exception) {
+                    result.error("share", e.message ?: "Partage impossible", null)
+                }
+            }
             "getBatteryInfo" -> result.success(batteryInfo())
             "cancelDecode" -> {
                 decoder?.cancelled = true
@@ -188,6 +200,18 @@ class PlatformBridge(
     fun onNewIntent(intent: Intent) {
         val uri = sharedUri(intent) ?: return
         emit("shared", describe(uri))
+    }
+
+    private fun shareFile(path: String, mime: String, title: String) {
+        val file = File(path)
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            activity, "${activity.packageName}.fileprovider", file,
+        )
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(mime)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        activity.startActivity(Intent.createChooser(send, title))
     }
 
     private fun notificationsAllowed(): Boolean {
