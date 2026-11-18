@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -162,6 +163,28 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
+  Future<void> _shareAudio() async {
+    final s = c.strings;
+    try {
+      await c.exporter.shareAudio(c.jobs.audioPath(job.id),
+          title: job.title, chooserTitle: s.t('share_audio'));
+    } on PlatformFailure {
+      if (mounted) toast(context, s.t('err_share'));
+    } on FileSystemException {
+      if (mounted) toast(context, s.t('audio_missing'));
+    }
+  }
+
+  Future<void> _saveAudio() async {
+    final s = c.strings;
+    try {
+      final saved = await c.exporter.saveAudioAs(c.jobs.audioPath(job.id), title: job.title);
+      if (saved && mounted) toast(context, s.t('file_saved'));
+    } on PlatformFailure {
+      if (mounted) toast(context, s.t('file_save_failed'));
+    }
+  }
+
   Future<void> _onMenu(String value) async {
     final s = c.strings;
     switch (value) {
@@ -172,6 +195,10 @@ class _ResultScreenState extends State<ResultScreen> {
         await _share(ExportFormat.txt);
       case 'srt':
         await _share(ExportFormat.srt);
+      case 'share_audio':
+        await _shareAudio();
+      case 'save_audio':
+        await _saveAudio();
       case 'timestamps':
         setState(() => showTimestamps = !showTimestamps);
       case 'rename':
@@ -259,6 +286,10 @@ class _ResultScreenState extends State<ResultScreen> {
               PopupMenuItem<String>(value: 'copy', child: Text(s.t('copy'))),
               PopupMenuItem<String>(value: 'txt', child: Text(s.t('share_txt'))),
               PopupMenuItem<String>(value: 'srt', child: Text(s.t('share_srt'))),
+              if (job.hasAudio) ...<PopupMenuEntry<String>>[
+                PopupMenuItem<String>(value: 'share_audio', child: Text(s.t('share_audio'))),
+                PopupMenuItem<String>(value: 'save_audio', child: Text(s.t('save_audio_as'))),
+              ],
               CheckedPopupMenuItem<String>(
                   value: 'timestamps', checked: showTimestamps, child: Text(s.t('with_timestamps'))),
               const PopupMenuDivider(),

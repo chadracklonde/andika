@@ -4,6 +4,7 @@ import '../app/controller.dart';
 import '../app/settings.dart';
 import '../models/model_catalog.dart';
 import '../platform/platform_bridge.dart';
+import '../recorder/recording.dart';
 import '../transcription/battery_advice.dart';
 import 'common.dart';
 import 'models_screen.dart';
@@ -11,10 +12,13 @@ import 'progress_screen.dart';
 
 /// Choix du fichier, de la langue et du modèle, puis lancement.
 class NewTranscriptionScreen extends StatefulWidget {
-  const NewTranscriptionScreen({super.key, required this.controller, this.initialFile});
+  const NewTranscriptionScreen({super.key, required this.controller, this.initialFile, this.recording});
 
   final AppController controller;
   final PickedFile? initialFile;
+
+  /// Enregistrement du dictaphone à transcrire (à la place d'un fichier importé).
+  final Recording? recording;
 
   @override
   State<NewTranscriptionScreen> createState() => _NewTranscriptionScreenState();
@@ -48,7 +52,8 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
     final s = c.strings;
     final chosen = file;
     final model = modelById(modelId);
-    if (chosen == null || model == null || starting) return;
+    final rec = widget.recording;
+    if ((chosen == null && rec == null) || model == null || starting) return;
     setState(() => starting = true);
     try {
       var proceed = true;
@@ -69,7 +74,9 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
         // Ces contrôles sont un confort : on lance quand même.
       }
       if (!proceed || !mounted) return;
-      final id = await c.startFromFile(chosen, language: language, model: model);
+      final id = rec != null
+          ? await c.startFromRecording(rec, language: language, model: model)
+          : await c.startFromFile(chosen!, language: language, model: model);
       if (!mounted) return;
       // Même en cas d'échec d'import, l'écran de progression affiche l'erreur.
       Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
@@ -86,30 +93,40 @@ class _NewTranscriptionScreenState extends State<NewTranscriptionScreen> {
     final installed = c.models.installedModels();
     final model = modelById(modelId);
     final fit = model == null ? ModelFit.good : modelFit(model, c.totalRamBytes);
-    final canStart = file != null &&
+    final canStart = (file != null || widget.recording != null) &&
         model != null &&
         c.models.isInstalled(model) &&
         fit != ModelFit.tooHeavy &&
         !c.busy &&
         !starting;
     return Scaffold(
-      appBar: AppBar(title: Text(s.t('new_transcription'))),
+      appBar: AppBar(
+          title: Text(widget.recording != null ? s.t('rec_transcribe_title') : s.t('new_transcription'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.audio_file_outlined),
-              title: Text(file?.name ?? s.t('no_file')),
-              subtitle: file == null || file!.size < 0
-                  ? null
-                  : Text(formatBytes(file!.size, mb: s.t('unit_mb'), gb: s.t('unit_gb'))),
-              trailing: TextButton(
-                onPressed: _pick,
-                child: Text(file == null ? s.t('choose_file') : s.t('change_file')),
+          if (widget.recording != null)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.mic_none),
+                title: Text(widget.recording!.title),
+                subtitle: Text(formatDuration(widget.recording!.durationMs)),
+              ),
+            )
+          else
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.audio_file_outlined),
+                title: Text(file?.name ?? s.t('no_file')),
+                subtitle: file == null || file!.size < 0
+                    ? null
+                    : Text(formatBytes(file!.size, mb: s.t('unit_mb'), gb: s.t('unit_gb'))),
+                trailing: TextButton(
+                  onPressed: _pick,
+                  child: Text(file == null ? s.t('choose_file') : s.t('change_file')),
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             value: language,

@@ -10,6 +10,9 @@ import '../models/model_catalog.dart';
 import '../models/model_downloader.dart';
 import '../models/model_store.dart';
 import '../platform/platform_bridge.dart';
+import '../recorder/recorder_controller.dart';
+import '../recorder/recording.dart';
+import '../recorder/recording_store.dart';
 import '../storage/job.dart';
 import '../storage/job_store.dart';
 import '../transcription/cleanup.dart';
@@ -61,10 +64,13 @@ class AppController extends ChangeNotifier {
   late SettingsStore _settingsStore;
   late ReplacementStore replacementStore;
   late ExportService exporter;
+  late RecordingStore recordingStore;
+  late RecorderController recorder;
   DeviceInfo? device;
 
   Settings settings = const Settings();
   List<Job> history = <Job>[];
+  List<Recording> recordings = <Recording>[];
   List<Replacement> replacements = <Replacement>[];
   ActiveTask? active;
   final Map<String, ModelDownloadState> downloads = <String, ModelDownloadState>{};
@@ -84,6 +90,21 @@ class AppController extends ChangeNotifier {
     _settingsStore = SettingsStore('$filesDir/settings.json');
     replacementStore = ReplacementStore('$filesDir/replacements.json');
     exporter = ExportService(cacheDir: cacheDir);
+    recordingStore = RecordingStore(filesDir);
+    recorder = RecorderController(
+      store: recordingStore,
+      texts: () {
+        final s = strings;
+        return RecorderTexts(
+          title: s.t('rec_notif_title'),
+          text: s.t('rec_notif_text'),
+          channelName: s.t('rec_notif_channel'),
+        );
+      },
+      defaultTitle: (utc) => strings.t('rec_default_title', {'date': formatShortDate(utc)}),
+    );
+    recorder.attach();
+    recorder.addListener(_onRecorderChanged);
     settings = _settingsStore.load();
     replacements = replacementStore.load();
     try {
@@ -93,7 +114,23 @@ class AppController extends ChangeNotifier {
     }
     jobs.markInterrupted();
     refreshHistory();
+    await recorder.sync();
+    refreshRecordings();
     ready = true;
+    notifyListeners();
+  }
+
+  bool _recorderWasActive = false;
+
+  void _onRecorderChanged() {
+    // Une fiche vient d'être créée quand l'enregistreur repasse à l'arrêt.
+    if (_recorderWasActive && !recorder.active) refreshRecordings();
+    _recorderWasActive = recorder.active;
+    notifyListeners();
+  }
+
+  void refreshRecordings() {
+    recordings = recordingStore.list();
     notifyListeners();
   }
 
@@ -232,6 +269,66 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+  }
+
+  /// Lance la transcription d'un enregistrement du dictaphone : son audio est copié
+  /// dans l'espace de travail (l'enregistrement reste intact dans la bibliothèque).
+  /// Retourne l'identifiant de la tâche, ou null si une autre tâche est en cours,
+  /// si le modèle manque ou si l'audio est introuvable.
+  Future<String?> startFromRecording(Recording rec, {String? language, WhisperModel? model}) async {
+    if (busy) return null;
+    final chosen = model ?? selectedModel;
+    if (!models.isInstalled(chosen)) return null;
+    final source = File(recordingStore.wavPath(rec.id));
+    if (!source.existsSync()) return null;
+    final lang = language ?? settings.transcriptionLanguage;
+    final id = jobs.newId();
+    final task = ActiveTask(jobId: id, title: rec.title)..stage = 'transcribing';
+    active = task;
+    notifyListeners();
+    try {
+      final free = (await _bridge.getDeviceInfo()).freeStorageBytes;
+      if (free < source.lengthSync() + 50 * 1024 * 1024) {
+        task.errorKey = 'err_import_no_space';
+        notifyListeners();
+        return null;
+      }
+      final target = File(jobs.audioPath(id));
+      target.parent.createSync(recursive: true);
+      await source.copy(target.path);
+      jobs.save(Job(
+        id: id,
+        title: rec.title,
+        createdAt: DateTime.now().toUtc(),
+        durationMs: rec.durationMs,
+        language: lang,
+        modelId: chosen.id,
+        status: JobStatus.running,
+      ));
+      refreshHistory();
+      unawaited(_run(task, jobs.load(id)!));
+      return id;
+    } on PlatformFailure catch (e) {
+      task.errorKey = 'err_import_unknown';
+      task.errorDetail = e.message;
+      notifyListeners();
+      return null;
+    } on FileSystemException catch (e) {
+      task.errorKey = 'err_import_read_error';
+      task.errorDetail = e.message;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  void renameRecording(Recording rec, String title) {
+    recordingStore.rename(rec, title);
+    refreshRecordings();
+  }
+
+  void deleteRecording(String id) {
+    recordingStore.delete(id);
+    refreshRecordings();
   }
 
   /// Reprend une transcription interrompue (les morceaux terminés sont conservés).

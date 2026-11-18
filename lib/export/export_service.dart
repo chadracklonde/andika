@@ -46,4 +46,20 @@ class ExportService {
     final file = writeExport(segments, format, title: title, timestamps: timestamps);
     return _bridge.shareFile(path: file.path, mime: exportMime(format), title: chooserTitle);
   }
+
+  /// Copie l'audio WAV dans cache/exports puis ouvre le menu de partage Android.
+  Future<void> shareAudio(String wavPath, {required String title, required String chooserTitle}) async {
+    final dir = Directory('$cacheDir/exports')..createSync(recursive: true);
+    for (final e in dir.listSync()) {
+      if (e is File) e.deleteSync();
+    }
+    final copy = await File(wavPath).copy('${dir.path}/${safeFileName(title)}.wav');
+    await _bridge.shareFile(path: copy.path, mime: 'audio/wav', title: chooserTitle);
+  }
+
+  /// « Enregistrer sous… » : l'utilisateur choisit le dossier. Faux s'il annule.
+  Future<bool> saveAudioAs(String wavPath, {required String title}) {
+    return _bridge.saveFileAs(
+        path: wavPath, name: '${safeFileName(title)}.wav', mime: 'audio/wav');
+  }
 }

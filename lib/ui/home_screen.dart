@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../app/controller.dart';
+import '../export/exporters.dart';
+import '../recorder/recorder_controller.dart';
 import '../storage/job.dart';
 import 'about_screen.dart';
 import 'common.dart';
 import 'models_screen.dart';
 import 'new_transcription_screen.dart';
 import 'progress_screen.dart';
+import 'recorder_screen.dart';
+import 'recordings_screen.dart';
 import 'result_screen.dart';
 import 'settings_screen.dart';
 
@@ -53,6 +57,20 @@ class _HomeScreenState extends State<HomeScreen> {
           appBar: AppBar(
             title: const Text('Andika'),
             actions: <Widget>[
+              IconButton(
+                tooltip: s.t('recorder'),
+                icon: const Icon(Icons.mic_none),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => RecorderScreen(controller: c),
+                )),
+              ),
+              IconButton(
+                tooltip: s.t('recordings'),
+                icon: const Icon(Icons.library_music_outlined),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => RecordingsScreen(controller: c),
+                )),
+              ),
               PopupMenuButton<String>(
                 tooltip: s.t('menu'),
                 onSelected: (v) {
@@ -91,6 +109,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = c.strings;
     final children = <Widget>[];
     final task = c.active;
+    if (c.recorder.active) {
+      children.add(Card(
+        child: ListTile(
+          leading: const Icon(Icons.mic),
+          title: Text(s.t('rec_banner', {'time': clockTime(c.recorder.elapsedMs)})),
+          subtitle: Text(c.recorder.state == RecState.paused ? s.t('rec_paused') : s.t('rec_recording')),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => RecorderScreen(controller: c),
+          )),
+        ),
+      ));
+    }
     if (task != null) {
       children.add(Card(
         child: ListTile(
@@ -105,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ));
     }
-    if (c.history.isEmpty && task == null) {
+    if (c.history.isEmpty && task == null && !c.recorder.active) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),

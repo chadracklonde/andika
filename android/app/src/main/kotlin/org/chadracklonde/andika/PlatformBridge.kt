@@ -28,18 +28,24 @@ class PlatformBridge(
         const val CHANNEL = "org.chadracklonde.andika/platform"
         const val REQ_PICK = 4201
         const val REQ_NOTIF = 4202
+        const val REQ_MIC = 4203
+        const val REQ_SAVE = 4204
     }
 
     private val channel = MethodChannel(messenger, CHANNEL)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPick: MethodChannel.Result? = null
     private var pendingNotif: MethodChannel.Result? = null
+    private var pendingMic: MethodChannel.Result? = null
+    private var pendingSave: MethodChannel.Result? = null
+    private var pendingSavePath: String? = null
     private val audioPlayer = AudioPlayer { state -> emit("playerState", state) }
     private var decoder: AudioDecoder? = null
     private var shareConsumed = false
 
     init {
         channel.setMethodCallHandler(this)
+        RecorderHub.listener = { state -> emit("recorderState", state) }
     }
 
     // --- Utilitaires -----------------------------------------------------------
@@ -156,6 +162,14 @@ class PlatformBridge(
                 }
             }
             "getBatteryInfo" -> result.success(batteryInfo())
+            "microphoneAllowed" -> result.success(microphoneAllowed())
+            "requestMicrophone" -> requestMicrophone(result)
+            "recorderStart" -> recorderStart(call, result)
+            "recorderPause" -> { RecorderHub.recorder?.pause(); result.success(null) }
+            "recorderResume" -> { RecorderHub.recorder?.resume(); result.success(null) }
+            "recorderStop" -> recorderStop(result)
+            "recorderStatus" -> result.success(RecorderHub.status())
+            "saveFileAs" -> saveFileAs(call, result)
             "cancelDecode" -> {
                 decoder?.cancelled = true
                 result.success(null)
@@ -185,6 +199,10 @@ class PlatformBridge(
 
     /** Retourne vrai si le résultat concernait ce pont. */
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode == REQ_SAVE) {
+            onSaveResult(resultCode, data)
+            return true
+        }
         if (requestCode != REQ_PICK) return false
         val result = pendingPick ?: return true
         pendingPick = null
@@ -235,12 +253,147 @@ class PlatformBridge(
 
     /** Retourne vrai si le résultat concernait ce pont. */
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray): Boolean {
+        if (requestCode == REQ_MIC) {
+            val mic = pendingMic ?: return true
+            pendingMic = null
+            mic.success(grantResults.isNotEmpty() &&
+                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            return true
+        }
         if (requestCode != REQ_NOTIF) return false
         val result = pendingNotif ?: return true
         pendingNotif = null
         result.success(grantResults.isNotEmpty() &&
             grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
         return true
+    }
+
+    // --- Enregistreur et « Enregistrer sous… » ---------------------------------
+
+    private fun microphoneAllowed(): Boolean =
+        activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun requestMicrophone(result: MethodChannel.Result) {
+        if (microphoneAllowed()) {
+            result.success(true)
+            return
+        }
+        if (pendingMic != null) {
+            result.error("busy", "Une demande est déjà en cours", null)
+            return
+        }
+        pendingMic = result
+        activity.requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), REQ_MIC)
+    }
+
+    private fun recorderStart(call: MethodCall, result: MethodChannel.Result) {
+        val path = call.argument<String>("path")
+        if (path == null) {
+            result.error("bad_args", "path manquant", null)
+            return
+        }
+        if (RecorderHub.recorder?.isRunning == true) {
+            result.error("busy", "Un enregistrement est déjà en cours", null)
+            return
+        }
+        if (!microphoneAllowed()) {
+            result.error("permission", "Autorisation du micro refusée", null)
+            return
+        }
+        val appContext = activity.applicationContext
+        val rec = AudioRecorder(File(path)) { state, elapsed, level, error ->
+            RecorderHub.listener?.invoke(
+                mapOf("state" to state, "elapsedMs" to elapsed, "level" to level, "error" to error),
+            )
+            if (state == "stopped") RecorderService.stop(appContext)
+        }
+        try {
+            rec.start()
+        } catch (e: RecorderException) {
+            result.error(e.code, e.message, null)
+            return
+        }
+        RecorderHub.recorder = rec
+        try {
+            RecorderService.start(
+                activity,
+                call.argument<String>("title") ?: "Andika",
+                call.argument<String>("text") ?: "",
+                call.argument<String>("channelName") ?: "Enregistrement",
+            )
+        } catch (e: Exception) {
+            Thread { rec.stop() }.start()
+            RecorderHub.recorder = null
+            result.error("service", e.message ?: "Service impossible à démarrer", null)
+            return
+        }
+        result.success(null)
+    }
+
+    private fun recorderStop(result: MethodChannel.Result) {
+        val rec = RecorderHub.recorder
+        if (rec == null) {
+            result.success(mapOf("durationMs" to 0L, "path" to null))
+            return
+        }
+        Thread {
+            val ms = rec.stop()
+            postToMain {
+                if (RecorderHub.recorder === rec) RecorderHub.recorder = null
+                result.success(mapOf("durationMs" to ms, "path" to rec.path))
+            }
+        }.start()
+    }
+
+    private fun saveFileAs(call: MethodCall, result: MethodChannel.Result) {
+        val path = call.argument<String>("path")
+        val name = call.argument<String>("name")
+        val mime = call.argument<String>("mime") ?: "application/octet-stream"
+        if (path == null || name == null) {
+            result.error("bad_args", "path ou name manquant", null)
+            return
+        }
+        if (pendingSave != null) {
+            result.error("busy", "Un enregistrement de fichier est déjà en cours", null)
+            return
+        }
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = mime
+            putExtra(Intent.EXTRA_TITLE, name)
+        }
+        pendingSave = result
+        pendingSavePath = path
+        try {
+            activity.startActivityForResult(intent, REQ_SAVE)
+        } catch (e: Exception) {
+            pendingSave = null
+            pendingSavePath = null
+            result.error("no_picker", "Aucun sélecteur de fichiers disponible", null)
+        }
+    }
+
+    private fun onSaveResult(resultCode: Int, data: Intent?) {
+        val result = pendingSave ?: return
+        val path = pendingSavePath
+        pendingSave = null
+        pendingSavePath = null
+        val uri = data?.data
+        if (resultCode != android.app.Activity.RESULT_OK || uri == null || path == null) {
+            result.success(false)
+            return
+        }
+        Thread {
+            try {
+                val out = activity.contentResolver.openOutputStream(uri, "w")
+                    ?: throw java.io.IOException("Destination inaccessible")
+                out.use { o -> File(path).inputStream().use { it.copyTo(o) } }
+                postToMain { result.success(true) }
+            } catch (e: Exception) {
+                postToMain { result.error("save_failed", e.message ?: "Enregistrement impossible", null) }
+            }
+        }.start()
     }
 
     private fun batteryInfo(): Map<String, Any?> {

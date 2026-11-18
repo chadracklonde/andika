@@ -252,6 +252,69 @@ class PlatformBridge {
     });
   }
 
+  // --- Enregistreur ----------------------------------------------------------
+
+  Future<bool> microphoneAllowed() {
+    return _guard<bool>(() async => await _channel.invokeMethod<bool>('microphoneAllowed') ?? false);
+  }
+
+  /// Affiche la demande d'autorisation du micro. Retourne le résultat.
+  Future<bool> requestMicrophone() {
+    return _guard<bool>(() async => await _channel.invokeMethod<bool>('requestMicrophone') ?? false);
+  }
+
+  /// Démarre l'enregistrement vers [path] (WAV 16 kHz mono) et le service d'avant-plan.
+  /// Erreurs : `permission`, `no_mic`, `busy`, `no_space`, `service`.
+  Future<void> recorderStart({
+    required String path,
+    required String title,
+    required String text,
+    required String channelName,
+  }) {
+    return _guard<void>(() => _channel.invokeMethod<void>('recorderStart', <String, Object?>{
+          'path': path,
+          'title': title,
+          'text': text,
+          'channelName': channelName,
+        }));
+  }
+
+  Future<void> recorderPause() {
+    return _guard<void>(() => _channel.invokeMethod<void>('recorderPause'));
+  }
+
+  Future<void> recorderResume() {
+    return _guard<void>(() => _channel.invokeMethod<void>('recorderResume'));
+  }
+
+  /// Arrête l'enregistrement et retourne sa durée en millisecondes.
+  Future<int> recorderStop() {
+    return _guard<int>(() async {
+      final map = await _channel.invokeMethod<Map<Object?, Object?>>('recorderStop');
+      return (map?['durationMs'] as num?)?.toInt() ?? 0;
+    });
+  }
+
+  /// État courant de l'enregistreur : {state, elapsedMs, level, path}.
+  Future<Map<String, Object?>> recorderStatus() {
+    return _guard<Map<String, Object?>>(() async {
+      final map = await _channel.invokeMethod<Map<Object?, Object?>>('recorderStatus');
+      return map == null ? <String, Object?>{'state': 'idle'} : map.cast<String, Object?>();
+    });
+  }
+
+  /// Ouvre le sélecteur « Enregistrer sous… » et copie [path] vers le fichier choisi.
+  /// Retourne faux si l'utilisateur annule.
+  Future<bool> saveFileAs({required String path, required String name, required String mime}) {
+    return _guard<bool>(() async =>
+        await _channel.invokeMethod<bool>('saveFileAs', <String, Object?>{
+          'path': path,
+          'name': name,
+          'mime': mime,
+        }) ??
+        false);
+  }
+
   /// Appel générique pour les fonctions ajoutées par les lots suivants.
   Future<T?> invoke<T>(String method, [Object? arguments]) {
     return _guard<T?>(() => _channel.invokeMethod<T>(method, arguments));
