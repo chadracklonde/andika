@@ -166,9 +166,11 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  void refreshRecordings() {
+  /// Relit la bibliothèque. À l'ouverture d'un écran (pendant sa construction), on passe
+  /// `notify: false` : prévenir les écouteurs à ce moment-là est interdit par Flutter.
+  void refreshRecordings({bool notify = true}) {
     recordings = recordingStore.list();
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   /// Fichiers reçus pendant que l'application tourne.

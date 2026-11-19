@@ -33,7 +33,8 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
   @override
   void initState() {
     super.initState();
-    c.refreshRecordings();
+    // Pendant la construction de l'écran : relire sans prévenir les autres écrans.
+    c.refreshRecordings(notify: false);
   }
 
   @override
