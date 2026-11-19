@@ -180,9 +180,10 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
               elevation: 4,
               color: theme.colorScheme.surface,
               child: InkWell(
+                key: const Key('library_record_button'),
                 customBorder: const CircleBorder(),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => RecorderScreen(controller: c, fromLibrary: true),
+                  builder: (_) => RecorderScreen(controller: c, fromLibrary: true, autoStart: true),
                 )),
                 child: Padding(
                   padding: const EdgeInsets.all(8),
@@ -240,6 +241,7 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
     return Column(
       children: <Widget>[
         InkWell(
+          key: Key('rec_row_${rec.id}'),
           onTap: () => _toggleOpen(rec),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),

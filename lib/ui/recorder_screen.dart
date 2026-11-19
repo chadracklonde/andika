@@ -12,15 +12,39 @@ const Color _recRed = Color(0xFFE8473F);
 const Color _doneBlue = Color(0xFF3B82F6);
 
 /// Dictaphone : onde défilante, chronomètre, un grand bouton rouge, ✓ pour terminer.
-class RecorderScreen extends StatelessWidget {
-  const RecorderScreen({super.key, required this.controller, this.fromLibrary = false});
+class RecorderScreen extends StatefulWidget {
+  const RecorderScreen({
+    super.key,
+    required this.controller,
+    this.fromLibrary = false,
+    this.autoStart = false,
+  });
 
   final AppController controller;
+
+  /// Démarre l'enregistrement dès l'ouverture (bouton « Enregistrer » de l'accueil).
+  final bool autoStart;
 
   /// Ouvert depuis la bibliothèque : on y retourne après l'arrêt, sans la rouvrir.
   final bool fromLibrary;
 
-  AppController get c => controller;
+  @override
+  State<RecorderScreen> createState() => _RecorderScreenState();
+}
+
+class _RecorderScreenState extends State<RecorderScreen> {
+  AppController get c => widget.controller;
+  bool get fromLibrary => widget.fromLibrary;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !c.recorder.active) c.recorder.start();
+      });
+    }
+  }
 
   Future<void> _stop(BuildContext context) async {
     final navigator = Navigator.of(context);
@@ -142,6 +166,18 @@ class RecorderScreen extends StatelessWidget {
                     fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 12, 32, 0),
+                  child: Text(
+                    switch (r.state) {
+                      RecState.idle => s.t('rec_hint_idle'),
+                      RecState.recording => s.t('rec_hint_recording'),
+                      RecState.paused => s.t('rec_hint_paused'),
+                    },
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
                 if (r.errorKey != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -177,6 +213,7 @@ class RecorderScreen extends StatelessWidget {
                           button: true,
                           label: mainLabel,
                           child: GestureDetector(
+                            key: const Key('main_button'),
                             onTap: () {
                               switch (r.state) {
                                 case RecState.idle:

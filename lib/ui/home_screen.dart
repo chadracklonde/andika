@@ -71,13 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 )),
               ),
               IconButton(
-                tooltip: s.t('recorder'),
-                icon: const Icon(Icons.mic_none),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => RecorderScreen(controller: c),
-                )),
-              ),
-              IconButton(
                 tooltip: s.t('recordings'),
                 icon: const Icon(Icons.library_music_outlined),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
@@ -105,13 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => NewTranscriptionScreen(controller: c),
-            )),
-            icon: const Icon(Icons.add),
-            label: Text(s.t('new_transcription')),
-          ),
+          bottomNavigationBar: _ActionBar(controller: c),
           body: _body(context),
         );
       },
@@ -124,13 +111,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final task = c.active;
     if (c.recorder.active) {
       children.add(Card(
-        child: ListTile(
-          leading: const Icon(Icons.mic),
-          title: Text(s.t('rec_banner', {'time': clockTime(c.recorder.elapsedMs)})),
-          subtitle: Text(c.recorder.state == RecState.paused ? s.t('rec_paused') : s.t('rec_recording')),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => RecorderScreen(controller: c),
-          )),
+        child: ListenableBuilder(
+          listenable: c.recorder,
+          builder: (context, _) => ListTile(
+            leading: const Icon(Icons.mic, color: Color(0xFFE8473F)),
+            title: Text(s.t('rec_banner', {'time': clockTime(c.recorder.elapsedMs)})),
+            subtitle: Text(c.recorder.state == RecState.paused ? s.t('rec_paused') : s.t('rec_recording')),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => RecorderScreen(controller: c),
+            )),
+          ),
         ),
       ));
     }
@@ -192,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (task != null && task.jobId == job.id) continue;
       children.add(_JobTile(controller: c, job: job));
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 96), children: children);
+    return ListView(padding: const EdgeInsets.only(bottom: 16), children: children);
   }
 }
 
@@ -220,6 +210,77 @@ class _JobTile extends StatelessWidget {
           builder: (_) => ResultScreen(controller: controller, jobId: job.id),
         ));
       },
+    );
+  }
+}
+
+/// Les deux actions principales, toujours visibles en bas : enregistrer (rouge) et
+/// transcrire un fichier. Un appui sur « Enregistrer » démarre tout de suite.
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    final s = c.strings;
+    return Material(
+      elevation: 8,
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: ListenableBuilder(
+                  listenable: c.recorder,
+                  builder: (context, _) {
+                    final active = c.recorder.active;
+                    return FilledButton.icon(
+                      key: const Key('record_button'),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => RecorderScreen(controller: c, autoStart: !active),
+                      )),
+                      icon: Icon(active ? Icons.graphic_eq : Icons.mic, size: 28),
+                      label: Text(
+                        active
+                            ? s.t('rec_button_active', {'time': clockTime(c.recorder.elapsedMs)})
+                            : s.t('rec_button'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFE8473F),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(60),
+                        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  key: const Key('transcribe_button'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => NewTranscriptionScreen(controller: c),
+                  )),
+                  icon: const Icon(Icons.upload_file, size: 26),
+                  label: Text(s.t('transcribe_file'), maxLines: 2, textAlign: TextAlign.center),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(60),
+                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

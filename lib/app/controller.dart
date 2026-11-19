@@ -146,12 +146,24 @@ class AppController extends ChangeNotifier {
   }
 
   bool _recorderWasActive = false;
+  RecState _lastRecState = RecState.idle;
+  String? _lastRecError;
 
+  /// Le dictaphone prévient à chaque tampon audio (plusieurs fois par seconde) : seuls
+  /// les vrais changements (démarrage, pause, arrêt, erreur) sont relayés à l'application.
+  /// Les écrans qui montrent le chronomètre ou le niveau écoutent `recorder` directement.
   void _onRecorderChanged() {
-    // Une fiche vient d'être créée quand l'enregistreur repasse à l'arrêt.
-    if (_recorderWasActive && !recorder.active) refreshRecordings();
+    final stopped = _recorderWasActive && !recorder.active;
+    final changed = recorder.state != _lastRecState || recorder.errorKey != _lastRecError;
     _recorderWasActive = recorder.active;
-    notifyListeners();
+    _lastRecState = recorder.state;
+    _lastRecError = recorder.errorKey;
+    // Une fiche vient d'être créée quand l'enregistreur repasse à l'arrêt.
+    if (stopped) {
+      refreshRecordings(); // prévient déjà les écouteurs
+    } else if (changed) {
+      notifyListeners();
+    }
   }
 
   void refreshRecordings() {
